@@ -58,6 +58,7 @@ function App() {
   const [tempBasal, setTempBasal] = useState();
   const [updateInProgress, setUpdateInProgress] = useState();
   const [profile, setProfile] = useState();
+  const [havePanned, setHavePanned] = useState();
   var localserver = "";
   if (process.env.REACT_APP_LOCALSERVER) localserver = "http://localhost:5000";
 
@@ -69,44 +70,62 @@ function App() {
   }, [tempBasal]);
 
   useEffect(async () => {
-    await getData();
+    await getData(new Date(), new Date().setTime(new Date().getTime()-1000*3600*48));
   }, []);
 
   const nrToGet = 200;
 
-  const getData = async (toDate = new Date()) => {
+  const getData = async (toDate = new Date(), fromDate = null) => {
+    let start = new Date();
     setUpdateInProgress(true);
     try {
-      let fromDate = new Date(toDate.getTime());
-      fromDate.setDate(fromDate.getDate() - 1);
-      var res = await axios.get(localserver + "/getsgv", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
-      let s = res.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
+      if (!fromDate) {
+        fromDate = new Date(toDate.getTime());
+        fromDate = fromDate.setTime(fromDate.getTime() - 1000 * 3600 * 12);
+      }
+      fromDate = new Date(fromDate).toISOString();
+      //fromDate = new Date(fromDate.setDate(fromDate.getDate() - 1)).toISOString();
+      toDate = toDate.toISOString();
+
+      const [sgvRes, profileRes, basalRes] = await Promise.all([
+        axios.get(localserver + "/getsgv", { params: { datefrom: fromDate, dateto: toDate } }),
+        axios.get(localserver + "/getprofiles", { params: { datefrom: fromDate, dateto: toDate } }),
+        axios.get(localserver + "/gettempbasal", { params: { datefrom: fromDate, dateto: toDate } })
+      ]);
+
+
+      // var res = await axios.get(localserver + "/getsgv", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
+
+      let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
       if (sgv) {
         s = sgv.concat(s);
       }
       setSgv(s);
-
-      res = await axios.get(localserver + "/getprofiles", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
-      let p = res.data.map(s => (({ created_at, duration, profile, profileJson }) => ({ x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson) }))(s));
+      console.log("getdata (sgv): " + (new Date() - start) + "ms")
+      let pt = new Date();
+      //res = await axios.get(localserver + "/getprofiles", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
+      let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({ x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson) }))(s));
       if (profile) {
-        p=profile.concat(p)
-        p = p.filter((item, pos) =>  p.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        p = profile.concat(p)
+        p = p.filter((item, pos) => p.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
       setProfile(p);
-
-      res = await axios.get(localserver + "/gettempbasal", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
-      let b = res.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({ x: created_at, duration: durationInMilliseconds, basal: rate }))(s));
+      console.log("getdata (profile): " + (new Date() - pt) + "ms")
+      let bt = new Date();
+      //res = await axios.get(localserver + "/gettempbasal", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
+      let b = basalRes.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({ x: created_at, duration: durationInMilliseconds, basal: rate }))(s));
       if (tempBasal) {
         b = tempBasal.concat(b);
-        b = b.filter((item, pos) =>  b.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        b = b.filter((item, pos) => b.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
       setTempBasal(b);
 
-
+      console.log("getdata (basal): " + (new Date() - bt) + "ms")
 
     } catch (e) {
       console.log(e);
     }
+    console.log("getdata: " + (new Date() - start) + "ms")
   };
 
   const RGB_red = 'rgb(255,0,0)';
@@ -115,6 +134,7 @@ function App() {
   let bg = [];
 
   function setData() {
+    let start = new Date();
     if (!sgv) return;
     sgv?.forEach((e, index) => {
       //if (index < 500) {
@@ -366,6 +386,8 @@ function App() {
     });
 
     setUpdateInProgress(false);
+    console.log("setdata: " + (new Date() - start) + "ms")
+
   }
 
   // let timer;
@@ -381,17 +403,17 @@ function App() {
   // }
 
   const checkIfMoreDataIsNeeded = async (c) => {
-    if(updateInProgress) return;
+    if (updateInProgress) return;
     //console.log(new Date(sgv[sgv.length-1].x).getTime());
     let firstDataDate = new Date(sgv[sgv.length - 1].x);
     //console.log(sgv.length);
     if (c.chart.scales.x.min < firstDataDate.getTime() + 1000 * 3600 * 4) {
       setUpdateInProgress(true);
-      c.chart.stop(); // make sure animations are not running
+      //c.chart.stop(); // make sure animations are not running
 
       await getData(new Date(firstDataDate.getTime() - 1000));
-      c.chart.update('none');
-      
+      //c.chart.update('none');
+
 
     }
     //console.log(sgv.length);
@@ -408,19 +430,18 @@ function App() {
   }
 
   const setXmin = (c) => {
-    if(c.chart.scales.x.min){
+    if (c.chart.scales.x.min) {
       return c.chart.scales.x.min;
     }
     return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 24) / stepSize) * stepSize);
   }
   const setXmax = (c) => {
-    if(c.chart.scales.x.max){
+    if (c.chart.scales.x.max) {
       return c.chart.scales.x.max;
     }
     return new Date().getTime() + maxOffset;
   }
 
-  var havPanned = false;
   const maxOffset = 1000 * 3600 * 2;
   const stepSize = 1000 * 60 * 30; //[ms/5min]
   const chartOptions = {
@@ -544,7 +565,7 @@ function App() {
           threashold: 10,
           //onPanComplete: (c) => console.log("NU"), //buggy, jumps back when setting a setState-varable!
           onPan: checkIfMoreDataIsNeeded,
-          onPanStart: (c) => { havPanned = true; }
+          onPanStart: (c) => { setHavePanned(true); }
         }
       },
       annotation: {
@@ -573,22 +594,22 @@ function App() {
               content: 'Test label'
             }
           },
-          // {
-          //   mode: 'vertical',
-          //   type: 'line',
-          //   scaleID: 'x',
-          //   //value: (c) => !havPanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax-c.chart.scales['x']._userMin)/4,
-          //   value: redrawCurrBGLine,
-          //   borderColor: RGB_gray,
-          //   borderWidth: 0.5,
-          //   label: {
-          //     backgroundColor: RGB_gray,
-          //     content: redrawCurrBGText,
-          //     enabled: true,
-          //     position: 'start', //position top
-          //     yAdjust: 100, //down offset from position
-          //   }
-          // },
+          {
+            mode: 'vertical',
+            type: 'line',
+            scaleID: 'x',
+            //value: (c) => !havPanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax-c.chart.scales['x']._userMin)/4,
+            value: redrawCurrBGLine,
+            borderColor: RGB_gray,
+            borderWidth: 0.5,
+            label: {
+              backgroundColor: RGB_gray,
+              content: redrawCurrBGText,
+              enabled: true,
+              position: 'start', //position top
+              yAdjust: 100, //down offset from position
+            }
+          },
         ]
       }
 
@@ -598,7 +619,7 @@ function App() {
   var currBGLinePos = 0;
   var lastBGLinePos = -100;
   function redrawCurrBGLine(c) {
-    currBGLinePos = !havPanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 4;
+    currBGLinePos = !havePanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 4;
     return currBGLinePos;
   }
   function redrawCurrBGText(c) {
