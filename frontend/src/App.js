@@ -54,6 +54,7 @@ function App() {
 
   const [chartData, setChartData] = useState({ datasets: [] });
   //const [chartOptions, setChartOptions] = useState({});
+  const [openaps, setOpenaps] = useState();
   const [sgv, setSgv] = useState();
   const [tempBasal, setTempBasal] = useState();
   const [updateInProgress, setUpdateInProgress] = useState();
@@ -70,7 +71,7 @@ function App() {
   }, [tempBasal]);
 
   useEffect(async () => {
-    await getData(new Date(), new Date().setTime(new Date().getTime()-1000*3600*48));
+    await getData(new Date(), new Date().setTime(new Date().getTime() - 1000 * 3600 * 48));
   }, []);
 
   const nrToGet = 200;
@@ -87,29 +88,40 @@ function App() {
       //fromDate = new Date(fromDate.setDate(fromDate.getDate() - 1)).toISOString();
       toDate = toDate.toISOString();
 
-      const [sgvRes, profileRes, basalRes] = await Promise.all([
+      const [sgvRes, openapsRes, profileRes, basalRes] = await Promise.all([
         axios.get(localserver + "/getsgv", { params: { datefrom: fromDate, dateto: toDate } }),
+        axios.get(localserver + "/getopenaps", { params: { datefrom: fromDate, dateto: toDate } }),
         axios.get(localserver + "/getprofiles", { params: { datefrom: fromDate, dateto: toDate } }),
         axios.get(localserver + "/gettempbasal", { params: { datefrom: fromDate, dateto: toDate } })
       ]);
 
 
-      // var res = await axios.get(localserver + "/getsgv", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
+      let oa = openapsRes.data.map(s => (({ created_at, configuration, openaps }) => ({
+        x: created_at, configuration: configuration, openaps: openaps
+      }))(s));
+      if (openaps) {
+        oa = openaps.concat(oa); //.slice(24*60/5*5); //only grab 5 days of data
+      }
+      setOpenaps(oa);
 
       let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
       if (sgv) {
-        s = sgv.concat(s); //.slice(24*60/5*5); //only grab 5 days of data
+        s = sgv.concat(s);
       }
       setSgv(s);
-      //res = await axios.get(localserver + "/getprofiles", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
-      let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({ x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson) }))(s));
+
+      let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({
+        x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson)
+      }))(s));
       if (profile) {
         p = profile.concat(p)
         p = p.filter((item, pos) => p.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
       setProfile(p);
-      //res = await axios.get(localserver + "/gettempbasal", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
-      let b = basalRes.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({ x: created_at, duration: durationInMilliseconds, basal: rate }))(s));
+
+      let b = basalRes.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({
+        x: created_at, duration: durationInMilliseconds, basal: rate
+      }))(s));
       if (tempBasal) {
         b = tempBasal.concat(b);
         b = b.filter((item, pos) => b.findIndex(it => it.x == item.x) == pos); //remove douplicates
@@ -124,6 +136,11 @@ function App() {
   };
 
   const RGB_red = 'rgb(255,0,0)';
+  const RGB_reda = 'rgba(255,0,0,0.2)';
+  const RGB_orange = 'rgb(255,127,0)';
+  const RGB_orangea = 'rgba(255,127,0,0.15)';
+  const RGB_blue = 'rgb(0, 100, 255)';
+  const RGB_bluea = 'rgba(0, 100, 255, 0.15)';
   const RGB_green = 'rgb(0,255,0)';
   const RGB_gray = 'rgb(128,128,128)';
   let bg = [];
@@ -131,7 +148,7 @@ function App() {
   function setData() {
     let start = new Date();
     if (!sgv) return;
-    sgv?.forEach((e, index) => {
+    sgv.forEach((e, index) => {
       //if (index < 500) {
       bg.push([
         new Date(e.x),
@@ -142,7 +159,41 @@ function App() {
     let firstBGtime = bg[bg.length - 1][0].getTime();
     let lastBGtime = bg[0][0].getTime();
 
-    let basProf = [];
+    let iob = [];
+    let cob = [];
+    var COBExists = false;
+    openaps.forEach((e, index) => {
+      iob.push([
+        new Date(e.x),
+        e.openaps.iob.iob
+      ])
+      if (e.openaps.suggested?.COB) {
+        if (!COBExists) {
+          COBExists = true;
+          cob.push([
+            new Date(e.x),
+            0
+          ]);
+        }
+        cob.push([
+          new Date(e.x),
+          e.openaps.suggested.COB / 10
+        ])
+      } else {
+        COBExists = false;
+        cob.push([
+          new Date(e.x),
+          0
+        ]);
+        cob.push([
+          new Date(e.x),
+          null
+        ])
+      }
+    });
+
+    let basalProfile = [];
+    let basalProfileFilled = [];
     let realProfiles = profile.filter(e => e.duration == 0);
     //realProfiles.reverse();
     var lastProfileStartTime = new Date(); //~lastBGtime
@@ -173,12 +224,12 @@ function App() {
             && bTime < new Date().setTime(new Date().getTime() + 2 * 3600 * 1000)
             && bTime > new Date().setTime(firstBGtime - 5 * 3600 * 1000)) {
             if (lastVal) {
-              basProf.push([
+              basalProfile.push([
                 bTime,
                 lastVal
               ])
             }
-            basProf.push([
+            basalProfile.push([
               bTime,
               b.value
             ])
@@ -268,35 +319,90 @@ function App() {
 
     });
 
+
+    
+
     let tempBasLoop = [];
     tempBasal?.forEach((e, index) => {
       let t = new Date(e.x).getTime();
       if (t > firstBGtime) {
         tempBasLoop.push([
           t + e.duration,
+          null
+        ]);
+        tempBasLoop.push([
+          t + e.duration,
           0
-        ])
-
+        ]);
         tempBasLoop.push([
           t + e.duration,
           e.basal
-        ])
+        ]);
         tempBasLoop.push([
           t,
           e.basal
-        ])
-
+        ]);
         tempBasLoop.push([
           t,
           0
-        ])
+        ]);
+
+
+
+        tempBasLoop.push([
+          t,
+          null
+        ]);
+
+
       }
     });
 
 
-
-
-
+    // if (basalProfile[0][0] > tempBasLoop[0][0]) {
+    //   basalProfileFilled.push([
+    //     basalProfile[0][0],
+    //     basalProfile[0][1]
+    //   ]);
+    //   basalProfileFilled.push([
+    //     tempBasLoop[0][0],
+    //     basalProfile[0][1]
+    //   ]);
+    // }
+    const findBasalAt = (t) => {
+      for(let i = 0; i < basalProfile.length; i++){
+        if(t >= basalProfile[i][0]){
+          return basalProfile[i][1];
+        }
+      }
+      return basalProfile[0][1];
+    }
+    var lastTime = tempBasLoop[0][0];
+    var lastVal = null;
+    tempBasLoop.forEach((tp) => {
+      if (tp[1] == null && lastVal == null && lastTime - tp[0] >  1000) {
+        basalProfileFilled.push([
+          lastTime,
+          null
+        ]);
+        basalProfileFilled.push([
+          lastTime,
+          findBasalAt(lastTime)
+        ]);
+        
+        
+        basalProfileFilled.push([
+          tp[0],
+          findBasalAt(tp[0])
+        ]);
+        basalProfileFilled.push([
+          tp[0],
+          null
+        ]);
+      }
+      lastTime = tp[0];
+      lastVal = tp[1];
+    });
 
 
     let width, height, gradient;
@@ -346,7 +452,30 @@ function App() {
           borderColor: (context) => context.chart.chartArea ? getGradient(context.chart, 0.5) : null,
           backgroundColor: (context) => context.chart.chartArea ? getGradient(context.chart, .5) : null,
           fill: false
-        }, {
+        },
+        {
+          label: "iob",
+          data: iob,
+          type: 'scatter',
+          showLine: true,
+          yAxisID: 'y3',
+          borderColor: RGB_blue,
+          backgroundColor: RGB_bluea,
+          fill: true,
+          pointRadius: 0,
+        },
+        {
+          label: "cob",
+          data: cob,
+          type: 'scatter',
+          showLine: true,
+          yAxisID: 'y3',
+          borderColor: RGB_orange,
+          backgroundColor: RGB_orangea,
+          fill: true,
+          pointRadius: 0,
+        },
+        {
           label: "basal",
           data: tempBasProf,
           type: 'scatter',
@@ -358,7 +487,7 @@ function App() {
           pointRadius: 0,
         }, {
           label: "basal",
-          data: basProf,
+          data: basalProfile,
           type: 'scatter',
           showLine: true,
           yAxisID: 'y2',
@@ -374,6 +503,16 @@ function App() {
           yAxisID: 'y2',
           borderColor: 'rgb(0, 50, 128)',
           backgroundColor: 'rgba(0, 100, 255, 0.2)',
+          fill: true,
+          pointRadius: 0,
+        }, {
+          label: "Standard basal",
+          data: basalProfileFilled,
+          type: 'scatter',
+          showLine: true,
+          yAxisID: 'y2',
+          borderColor: 'rgb(0, 50, 128)',
+          backgroundColor: RGB_green,
           fill: true,
           pointRadius: 0,
         }
@@ -497,34 +636,30 @@ function App() {
 
       y: {
         position: 'left',
-        min: 0,
-        max: sgv == undefined ? 20 : Math.ceil(Math.max(...sgv.map(x => x.bg)) / 5) * 5,
+        min: -10,
+        max: sgv == undefined ? 20 : Math.ceil(Math.max(...sgv.map(x => x.bg)) / 5) * 5 + 5,
         ticks: {
           min: 0,
           stepSize: 1,
+          callback: (v, i) => v >= 0 ? v : null,
         },
         grid: {
           display: false,
         }
-        //   // color: 'white'
-
-        //   drawBorder: false,
-        //   color: function (context) {
-        //     if (context.tick.value == highThresh || context.tick.value == lowThresh) {
-        //       return RGB_green;
-        //     } else if (context.tick.value < 0) {
-        //       return RGB_red;
-        //     }
-
-        //     return '#000000';
-        //   },
-        // }
       },
       y2: {
         position: 'right',
         min: 0,
-        max: tempBasal == undefined ? 20 : Math.ceil(Math.max(...tempBasal.map(x => x.basal)) / 5) * 10,
-        ticks:{
+        max: 15,//tempBasal == undefined ? 5 : Math.ceil(Math.max(...tempBasal.map(x => x.basal)) / 5) * 10,
+        ticks: {
+          display: false
+        }
+      },
+      y3: {
+        position: 'right',
+        min: -20,
+        max: openaps == undefined ? 5 : Math.max(...openaps.map(x => x.openaps.suggested?.COB ? x.openaps.suggested?.COB / 10 : 0)),
+        ticks: {
           display: false
         }
       },
@@ -532,7 +667,7 @@ function App() {
     },
     animation: {
       //duration: 600,
-      
+
       // x: {
       //   easing: 'linear',
       //   duration: 1500,
@@ -613,7 +748,7 @@ function App() {
               content: redrawCurrBGText,
               enabled: true,
               position: 'start', //position top
-              yAdjust: 100, //down offset from position
+              yAdjust: -20, //down offset from position
             }
           },
         ]
@@ -630,7 +765,7 @@ function App() {
   }
   function redrawCurrBGText(c) {
     //console.log(currBGLinePos);
-    var retStr = "Hejhopp!";
+    var retStr = "";
     if (sgv) {
       let s = getNearestValue(currBGLinePos, sgv);
       retStr = [new Date(s.x).toLocaleString(), 'BG: ' + s.bg.toFixed(1)]
@@ -643,17 +778,27 @@ function App() {
   }
 
   return (
-    <div className="App" style={{height: "70vh"}}>
+    <div className="App" style={{ height: "70vh" }}>
       <Line className="MainChart"
         options={chartOptions}
         data={chartData}
-        style={{ 
-          backgroundColor: "black", 
+        style={{
+          backgroundColor: "black",
           // height: "50vh",
           marginTop: "100px",
           marginBottom: "50px"
         }}
       />
+      {/* <Line className="MainChart"
+        options={chartOptions}
+        data={chartData}
+        style={{
+          backgroundColor: "black",
+          // height: "50vh",
+          marginTop: "100px",
+          marginBottom: "50px"
+        }}
+      /> */}
     </div>
   );
 }
