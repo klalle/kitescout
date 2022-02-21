@@ -98,11 +98,9 @@ function App() {
 
       let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
       if (sgv) {
-        s = sgv.concat(s);
+        s = sgv.concat(s); //.slice(24*60/5*5); //only grab 5 days of data
       }
       setSgv(s);
-      console.log("getdata (sgv): " + (new Date() - start) + "ms")
-      let pt = new Date();
       //res = await axios.get(localserver + "/getprofiles", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
       let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({ x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson) }))(s));
       if (profile) {
@@ -110,8 +108,6 @@ function App() {
         p = p.filter((item, pos) => p.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
       setProfile(p);
-      console.log("getdata (profile): " + (new Date() - pt) + "ms")
-      let bt = new Date();
       //res = await axios.get(localserver + "/gettempbasal", { params: { datefrom: fromDate.toISOString(), dateto: toDate.toISOString() } });
       let b = basalRes.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({ x: created_at, duration: durationInMilliseconds, basal: rate }))(s));
       if (tempBasal) {
@@ -120,7 +116,6 @@ function App() {
       }
       setTempBasal(b);
 
-      console.log("getdata (basal): " + (new Date() - bt) + "ms")
 
     } catch (e) {
       console.log(e);
@@ -536,6 +531,35 @@ function App() {
       },
 
     },
+    animation: {
+      //duration: 600,
+      
+      // x: {
+      //   easing: 'linear',
+      //   duration: 1500,
+      //   from: 0
+      // },
+      // y: {
+      //   duration: 500,
+      //   from: 0,
+      //   easing: 'linear',
+      // }
+    },
+    // transitions: {
+    //   show: {
+    //     animations: {
+    //       onProgress(animation) {
+    //         console.log(animation.animationObject.currentStep / animation.animationObject.numSteps);
+    //       },
+    //       x: {
+    //         from: 0
+    //       },
+    //       y: {
+    //         from: 0
+    //       }
+    //     }
+    //   },
+    // },
     plugins: {
       zoom: {
         limits: {
@@ -642,7 +666,12 @@ function App() {
       <Line className="MainChart"
         options={chartOptions}
         data={chartData}
-        style={{ backgroundColor: "black", marginTop: "200px" }}
+        style={{ 
+          backgroundColor: "black", 
+          // height: "50vh",
+          marginTop: "200px",
+          marginBottom: "50px"
+        }}
       />
     </div>
   );
