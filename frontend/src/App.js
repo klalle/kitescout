@@ -661,15 +661,14 @@ function App() {
   }
 
   return (
-    <div className="App">
-      {/* <div style={{height: "200px"}}></div> */}
+    <div className="App" style={{height: "70vh"}}>
       <Line className="MainChart"
         options={chartOptions}
         data={chartData}
         style={{ 
           backgroundColor: "black", 
           // height: "50vh",
-          marginTop: "200px",
+          marginTop: "100px",
           marginBottom: "50px"
         }}
       />
