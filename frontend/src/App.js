@@ -480,7 +480,7 @@ function App() {
           // autoSkipPadding: 20,
           maxTicksLimit: 10,
           stepSize: stepSize,
-          maxRotation: 0,
+          maxRotation: 45,
           callback: (value, index, values) => {
             return value.includes('00:00') ? value : value.split(" - ")[1];
           }
