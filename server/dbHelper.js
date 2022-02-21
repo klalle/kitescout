@@ -33,7 +33,7 @@ async function getData(table, column, value, limitEntries = 100000, creationDate
     if (!db) return;
 
     var returnArray = [];
-    const findObj = { [column]: value };
+    const findObj = value ? { [column]: value } : {};
     if (creationDateFrom) findObj["created_at"] = { "$gt": creationDateFrom, "$lt": creationDateTo };
 
     try {

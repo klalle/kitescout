@@ -576,6 +576,8 @@ function App() {
     return new Date().getTime() + maxOffset;
   }
 
+  
+
   const maxOffset = 1000 * 3600 * 2;
   const stepSize = 1000 * 60 * 30; //[ms/5min]
   const chartOptions = {
@@ -736,6 +738,30 @@ function App() {
             }
           },
           {
+            type: 'line',
+            mode: 'horizontal',
+            scaleID: 'y',
+            value: setTargetLine, 
+            borderDash: [8,5],
+
+            borderColor: RGB_gray,
+            borderWidth: 0.5,
+            label: {
+              enabled: false,
+            }
+          },
+          {
+            type: 'line',
+            mode: 'horizontal',
+            scaleID: 'y3',
+            value: 0,
+            borderColor: RGB_gray,
+            borderWidth: 0.5,
+            label: {
+              enabled: false,
+            }
+          },
+          {
             mode: 'vertical',
             type: 'line',
             scaleID: 'x',
@@ -762,6 +788,10 @@ function App() {
   function redrawCurrBGLine(c) {
     currBGLinePos = !havePanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 4;
     return currBGLinePos;
+  }
+
+  function setTargetLine(c) {
+    return openaps == undefined ? -1 : openaps[0].openaps.suggested.targetBG/18;
   }
   function redrawCurrBGText(c) {
     //console.log(currBGLinePos);
