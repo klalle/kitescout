@@ -482,7 +482,7 @@ function App() {
           stepSize: stepSize,
           maxRotation: 45,
           callback: (value, index, values) => {
-            return value.includes('00:00') ? value : value.split(" - ")[1];
+            return value.split(" - ")[1]; //value.includes('00:00') ? value : value.split(" - ")[1];
           }
         },
         time: {
