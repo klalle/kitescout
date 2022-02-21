@@ -524,10 +524,9 @@ function App() {
         position: 'right',
         min: 0,
         max: tempBasal == undefined ? 20 : Math.ceil(Math.max(...tempBasal.map(x => x.basal)) / 5) * 10,
-        // ticks: {
-        //   max: 10,
-        //   min: 0
-        // },
+        ticks:{
+          display: false
+        }
       },
 
     },
@@ -545,21 +544,6 @@ function App() {
       //   easing: 'linear',
       // }
     },
-    // transitions: {
-    //   show: {
-    //     animations: {
-    //       onProgress(animation) {
-    //         console.log(animation.animationObject.currentStep / animation.animationObject.numSteps);
-    //       },
-    //       x: {
-    //         from: 0
-    //       },
-    //       y: {
-    //         from: 0
-    //       }
-    //     }
-    //   },
-    // },
     plugins: {
       zoom: {
         limits: {
@@ -602,7 +586,6 @@ function App() {
             borderColor: RGB_gray,
             borderWidth: 0.5,
             label: {
-              //content: checkIfMoreDataIsNeeded,
               enabled: false,
             }
           },
@@ -615,7 +598,6 @@ function App() {
             borderWidth: 0.5,
             label: {
               enabled: false,
-              content: 'Test label'
             }
           },
           {
