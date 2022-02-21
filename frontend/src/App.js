@@ -770,11 +770,11 @@ function App() {
             borderColor: RGB_gray,
             borderWidth: 0.5,
             label: {
-              backgroundColor: RGB_gray,
+              backgroundColor: 'rgba(0,0,0,0)',
               content: redrawCurrBGText,
               enabled: true,
               position: 'start', //position top
-              yAdjust: -20, //down offset from position
+              yAdjust: 0, //down offset from position
             }
           },
         ]
