@@ -564,7 +564,7 @@ function App() {
           showLine: false,
           yAxisID: 'y',
           borderColor: RGB_blue,
-          backgroundColor: RGB_orangea,
+          backgroundColor: RGB_orangea.replace("0.15","0.25"),
           fill: false,
           pointRadius: setMealBolusRadius,
           // pointRadius: setBolusRadius,
