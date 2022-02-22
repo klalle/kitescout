@@ -65,6 +65,20 @@ app.get('/gettempbasal', async function (req, res) {
     res.send(JSON.stringify(entries));
 });
 
+app.get('/getmealbolus', async function (req, res) {
+    let dateFrom = req.query.datefrom;
+    let dateTo = req.query.dateto ? req.query.dateto : new Date().toISOString();
+    let count = req.query.count ? req.query.count : 1000;
+
+    res.set('Content-Type', 'application/json');
+    if (isNotADate(dateFrom) || isNotADate(dateTo) || isNotClean(count)) {
+        res.send('{"message":"Not a valid call!"}');
+        return;
+    }
+    let entries = await dbhelper.getData("treatments", "eventType", "Meal Bolus", count, dateFrom, dateTo);
+    res.send(JSON.stringify(entries));
+});
+
 app.get('/getopenaps', async function (req, res) {
     let dateFrom = req.query.datefrom;
     let dateTo = req.query.dateto ? req.query.dateto : new Date().toISOString();
