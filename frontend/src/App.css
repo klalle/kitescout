@@ -11,9 +11,14 @@ html, body  {
   background-color: black;
 }
 .info{
-  color: white;
+  color: rgb(128,128,128);
+  /* background-color: bisque; */
 }
-
+.infoTable{
+  color: rgb(128,128,128);
+  /* background-color: green; */
+  margin: auto;
+}
 .App-logo {
   height: 40vmin;
   pointer-events: none;

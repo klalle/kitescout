@@ -61,12 +61,7 @@ function App() {
   const [updateInProgress, setUpdateInProgress] = useState();
   const [profile, setProfile] = useState();
   const [havePanned, setHavePanned] = useState();
-  const [currBG, setCurrBG] = useState();
-  const [currIOB, setCurrIOB] = useState();
-  const [currCOB, setCurrCOB] = useState();
-  const [currBas, setCurrBas] = useState();
-  const [currAct, setCurrAct] = useState();
-  const [currSens, setCurrSens] = useState();
+  const [currInfo, setCurrInfo] = useState();
   const [hasStarted, setHasStarted] = useState();
   var localserver = "";
   if (process.env.REACT_APP_LOCALSERVER) localserver = "http://localhost:5000";
@@ -75,7 +70,10 @@ function App() {
   const lowThresh = 3.5;
 
   useEffect(() => {
-    if (hasStarted) setData();
+    if (hasStarted) {
+      setData();
+      setInfoData();
+    }
   }, [tempBasal]);
 
   useEffect(async () => {
@@ -196,7 +194,7 @@ function App() {
       mealInsu.push({
         x: new Date(e.x),
         insulin: e.insulin,
-        bolus: e.carbs,
+        carbs: e.carbs,
       })
       // }
     });
@@ -527,6 +525,9 @@ function App() {
     function setMealBolusRadius(val) {
       return mealInsu[val.index].insulin * 2;
     }
+    function setMealCarbRadius(val) {
+      return mealInsu[val.index].carbs/5;
+    }
 
     setChartData({
       //labels: sgv?.map(t => t.time),
@@ -557,16 +558,27 @@ function App() {
           pointRadius: setBolusRadius,
         },
         {
-          label: "meal/bolus",
+          label: "meal-bolus",
           data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv).bg - 1, x.insulin]),
+          type: 'scatter',
+          showLine: false,
+          yAxisID: 'y',
+          borderColor: RGB_blue,
+          backgroundColor: RGB_orangea,
+          fill: false,
+          pointRadius: setMealBolusRadius,
+          // pointRadius: setBolusRadius,
+        },
+        {
+          label: "meal-carbs",
+          data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv).bg + 1, x.carbs]),
           type: 'scatter',
           showLine: false,
           yAxisID: 'y',
           borderColor: RGB_orange,
           backgroundColor: RGB_orangea,
           fill: false,
-          pointRadius: setMealBolusRadius,
-          // pointRadius: setBolusRadius,
+          pointRadius: setMealCarbRadius,
         },
         {
           label: "iob",
@@ -812,7 +824,7 @@ function App() {
 
     },
     animation: {
-      duration: 0, //disable animations...
+      // duration: 0, //disable animations...
 
       // x: {
       //   easing: 'linear',
@@ -854,7 +866,10 @@ function App() {
           threashold: 10,
           onPanComplete: setInfoData, //buggy, jumps back when setting a setState-varable!
           onPan: checkIfMoreDataIsNeeded,
-          onPanStart: (c) => { setHavePanned(true); }
+          onPanStart: (c) => {
+            if (!havePanned) setHavePanned(true);
+            clearInfo();
+          }
         }
       },
       tooltip: {
@@ -864,8 +879,10 @@ function App() {
             var ret = context.formattedValue;
             if (label == 'smb') {
               ret = context.raw.bolus + 'U';
-            } else if (label == "meal/bolus") {
+            } else if (label == "meal-bolus") {
               ret = context.raw[2] + 'U';
+            } else if (label == "meal-carbs") {
+              ret = context.raw[2] + 'g';
             }
             return ret;
           }
@@ -964,21 +981,30 @@ function App() {
   }
 
   function setTargetLine(c) {
-    return openaps != undefined && openaps.length > 0 ? openaps[0].openaps.suggested.targetBG / 18 : -1;
+    return openaps != undefined
+      && openaps.length > 0 ? openaps.find(x => x.openaps?.suggested).openaps.suggested.targetBG / 18 : -1;
   }
   function setInfoData(c) {
     var retStr = "";
     if (sgv?.length) {
-      setCurrBG(getNearestValue(currBGLinePos, sgv).bg.toFixed(1));
       let currOpenAps = getNearestValue(currBGLinePos, openaps).openaps
-      setCurrIOB(currOpenAps.iob.iob.toFixed(1));
-      setCurrAct(currOpenAps.iob.activity.toFixed(3));
       let currSug = currOpenAps.suggested;
-      setCurrCOB(currSug?.COB ? currSug.COB.toFixed(1) : "");
-      setCurrSens(currSug?.sensitivityRatio ? (currSug.sensitivityRatio*100).toFixed(0) : "");
+      setCurrInfo({
+        bg: getNearestValue(currBGLinePos, sgv).bg.toFixed(1),
+        iob: currOpenAps.iob.iob.toFixed(1),
+        act: currOpenAps.iob.activity.toFixed(3),
+        cob: currSug?.COB ? currSug.COB.toFixed(1) : "",
+        sens: currSug?.sensitivityRatio ? (currSug.sensitivityRatio * 100).toFixed(0) : "",
+        basal: getNearestValue(currBGLinePos, tempBasal).basal,
+        reason: currSug?.reason
+      })
       lastBGLinePos = currBGLinePos;
     }
     return retStr;
+  }
+
+  function clearInfo() {
+    setCurrInfo(null);
   }
 
   function redrawCurrBGText(c) {
@@ -1002,35 +1028,32 @@ function App() {
   return (
     <div className="App">
       <div className="info">
-        info
-        <table>
+        <table className="infoTable">
           <tbody>
             <tr>
               <td>BG</td>
-              <td>{currBG}mmol</td>
-            </tr>
-            <tr>
+              <td>{currInfo?.bg}</td>
               <td>IOB</td>
-              <td>{currIOB}U</td>
+              <td>{currInfo?.iob}U</td>
+
             </tr>
             <tr>
+              <td>Basal</td>
+              <td>{currInfo?.basal}U</td>
               <td>COB</td>
-              <td>{currCOB}g</td>
-            </tr>
-            <tr>
-              <td>Current Basal</td>
-              <td>{currBas}U</td>
+              <td>{currInfo?.cob}g</td>
             </tr>
             <tr>
               <td>Activity</td>
-              <td>{currAct}</td>
-            </tr>
-            <tr>
+              <td>{currInfo?.act}</td>
               <td>Autosens</td>
-              <td>{currSens}%</td>
+              <td>{currInfo?.sens}%</td>
             </tr>
           </tbody>
         </table>
+        <br />
+        {currInfo?.reason?.split(";")[1]}<br />
+        {currInfo?.reason?.split(";")[2]}
       </div>
       <div style={{ height: "80vh" }}>
         <Line className="MainChart"
@@ -1039,7 +1062,7 @@ function App() {
           style={{
             backgroundColor: "black",
             // height: "50vh",
-            marginTop: "100px",
+            marginTop: "50px",
             marginBottom: "50px"
           }}
         />
