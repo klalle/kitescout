@@ -613,7 +613,7 @@ function App() {
           fill: true,
           pointRadius: 0,
           lineBorderWidth: 0.5,
-          hidden: true,
+          // hidden: true,
 
         },
         {
@@ -626,7 +626,7 @@ function App() {
           fill: false,
           pointRadius: 0,
           lineBorderWidth: 0.5,
-          hidden: true,
+          // hidden: true,
         },
         {
           label: "%basal",
@@ -638,7 +638,7 @@ function App() {
           backgroundColor: RGB_bluea,
           fill: false,
           pointRadius: 0,
-          hidden: true,
+          // hidden: true,
         }, {
           label: "basal",
           data: basalProfile,
