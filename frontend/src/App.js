@@ -861,7 +861,7 @@ function App() {
           },
           mode: "x",
           speed: 20,
-          //onZoomComplete: startFetch
+          onZoomComplete: setInfoData
         },
         pan: {
           enabled: true,
