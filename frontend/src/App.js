@@ -12,7 +12,7 @@ import {
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
+  // BarElement,
   ScatterController,
   Title,
   Tooltip,
@@ -32,7 +32,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
+  // BarElement,
   ScatterController,
   Title,
   Tooltip,
@@ -61,7 +61,13 @@ function App() {
   const [updateInProgress, setUpdateInProgress] = useState();
   const [profile, setProfile] = useState();
   const [havePanned, setHavePanned] = useState();
-  const [hasStarted, setHasStarted] = useState(false);
+  const [currBG, setCurrBG] = useState();
+  const [currIOB, setCurrIOB] = useState();
+  const [currCOB, setCurrCOB] = useState();
+  const [currBas, setCurrBas] = useState();
+  const [currAct, setCurrAct] = useState();
+  const [currSens, setCurrSens] = useState();
+  const [hasStarted, setHasStarted] = useState();
   var localserver = "";
   if (process.env.REACT_APP_LOCALSERVER) localserver = "http://localhost:5000";
 
@@ -69,7 +75,7 @@ function App() {
   const lowThresh = 3.5;
 
   useEffect(() => {
-    if(hasStarted) setData();
+    if (hasStarted) setData();
   }, [tempBasal]);
 
   useEffect(async () => {
@@ -106,8 +112,8 @@ function App() {
       if (openaps) {
         oa = openaps.concat(oa); //.slice(24*60/5*5); //only grab 5 days of data
       }
-      if(oa)
-      setOpenaps(oa);
+      if (oa)
+        setOpenaps(oa);
 
       let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
       if (sgv) {
@@ -124,6 +130,15 @@ function App() {
       }
       setProfile(p);
 
+      let m = mealbolusRes.data.map(s => (({ created_at, insulin, carbs }) => ({
+        x: created_at, insulin: insulin, carbs: carbs
+      }))(s));
+      if (mealBolus) {
+        m = mealBolus.concat(m);
+        m = m.filter((item, pos) => m.findIndex(it => it.x == item.x) == pos); //remove douplicates
+      }
+      setMealBolus(m);
+
       let b = basalRes.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({
         x: created_at, duration: durationInMilliseconds, basal: rate
       }))(s));
@@ -133,13 +148,7 @@ function App() {
       }
       setTempBasal(b);
 
-      let m = mealbolusRes.data.map(s => (({ created_at, insulin, carbs }) => ({
-        x: created_at, insulin: insulin, carbs: carbs }))(s));
-      if (mealBolus) {
-        m = mealBolus.concat(m);
-        m = m.filter((item, pos) => m.findIndex(it => it.x == item.x) == pos); //remove douplicates
-      }
-      setMealBolus(m);
+
 
     } catch (e) {
       console.log(e);
@@ -161,13 +170,13 @@ function App() {
   let iob = [];
   let cob = [];
   let sens = [];
-  let bolus = [];
+  let smb = [];
   let mealInsu = [];
   let reason = [];
 
   function setData() {
     let start = new Date();
-    if (!sgv || sgv.length==0) {
+    if (!sgv || sgv.length == 0) {
       alert("No data to show... try scrolling back in time or check your CONNSTR_mongo in Heroku!")
       return;
     };
@@ -182,7 +191,15 @@ function App() {
     let firstBGtime = bg[bg.length - 1][0].getTime();
     let lastBGtime = bg[0][0].getTime();
 
-
+    mealBolus?.forEach((e, index) => {
+      //if (index < 500) {
+      mealInsu.push({
+        x: new Date(e.x),
+        insulin: e.insulin,
+        bolus: e.carbs,
+      })
+      // }
+    });
     var COBExists = false;
     var lastSens = null;
     openaps.forEach((e, index) => {
@@ -196,7 +213,7 @@ function App() {
       if (e.openaps.suggested) {
         let sug = e.openaps.suggested;
         if (sug.units) {
-          bolus.push({
+          smb.push({
             x: new Date(e.x),
             y: sug.bg / 18 - 1,
             bolus: sug.units
@@ -505,8 +522,10 @@ function App() {
       return gradient;
     }
     function setBolusRadius(val) {
-      //console.log(val.parsed);
-      return bolus[val.index].bolus * 10;
+      return smb[val.index].bolus * 10;
+    }
+    function setMealBolusRadius(val) {
+      return mealInsu[val.index].insulin * 2;
     }
 
     setChartData({
@@ -527,8 +546,8 @@ function App() {
           fill: false
         },
         {
-          label: "bolus",
-          data: bolus,
+          label: "smb",
+          data: smb,
           type: 'scatter',
           showLine: false,
           yAxisID: 'y',
@@ -536,6 +555,18 @@ function App() {
           backgroundColor: RGB_bluea,
           fill: false,
           pointRadius: setBolusRadius,
+        },
+        {
+          label: "meal/bolus",
+          data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv).bg - 1, x.insulin]),
+          type: 'scatter',
+          showLine: false,
+          yAxisID: 'y',
+          borderColor: RGB_orange,
+          backgroundColor: RGB_orangea,
+          fill: false,
+          pointRadius: setMealBolusRadius,
+          // pointRadius: setBolusRadius,
         },
         {
           label: "iob",
@@ -569,19 +600,21 @@ function App() {
           backgroundColor: RGB_graya,
           fill: true,
           pointRadius: 0,
-          lineBorderWidth: 0.5
+          lineBorderWidth: 0.5,
+          hidden: true,
 
         },
         {
           label: "act",
-          data: iob.map(x => [x.x, x.act*100]),
+          data: iob.map(x => [x.x, x.act * 100]),
           type: 'scatter',
           showLine: true,
           yAxisID: 'y',
           borderColor: RGB_orange,
           fill: false,
           pointRadius: 0,
-          lineBorderWidth: 0.5
+          lineBorderWidth: 0.5,
+          hidden: true,
         },
         {
           label: "%basal",
@@ -593,6 +626,7 @@ function App() {
           backgroundColor: RGB_red,
           fill: false,
           pointRadius: 0,
+          hidden: true,
         }, {
           label: "basal",
           data: basalProfile,
@@ -623,6 +657,7 @@ function App() {
           backgroundColor: RGB_greena,
           fill: true,
           pointRadius: 0,
+          hidden: true,
         }
       ]
     });
@@ -777,7 +812,7 @@ function App() {
 
     },
     animation: {
-      //duration: 600,
+      duration: 0, //disable animations...
 
       // x: {
       //   easing: 'linear',
@@ -826,11 +861,13 @@ function App() {
         callbacks: {
           label: function (context, a) {
             var label = context.dataset.label || '';
-
-            if (label == 'bolus') {
-              return context.raw.bolus + 'U';
+            var ret = context.formattedValue;
+            if (label == 'smb') {
+              ret = context.raw.bolus + 'U';
+            } else if (label == "meal/bolus") {
+              ret = context.raw[2] + 'U';
             }
-            return context.formattedValue;
+            return ret;
           }
         }
       },
@@ -904,7 +941,7 @@ function App() {
             label: {
               backgroundColor: 'rgba(0,0,0,0)',
               content: redrawCurrBGText,
-              enabled: true,
+              enabled: false,
               position: 'start', //position top
               yAdjust: 0, //down offset from position
             }
@@ -919,39 +956,81 @@ function App() {
   var lastBGLinePos = -100;
   function redrawCurrBGLine(c) {
     currBGLinePos = !havePanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
-    return currBGLinePos;
+    if (Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 2) {
+      lastBGLinePos = currBGLinePos;
+      return currBGLinePos;
+    }
+    return lastBGLinePos;
   }
 
   function setTargetLine(c) {
-    return openaps != undefined && openaps.length>0 ? openaps[0].openaps.suggested.targetBG / 18 : -1;
+    return openaps != undefined && openaps.length > 0 ? openaps[0].openaps.suggested.targetBG / 18 : -1;
   }
   function redrawCurrBGText(c) {
     //console.log(currBGLinePos);
     var retStr = "";
-    if (sgv?.length>0) {
-      let s = getNearestValue(currBGLinePos, sgv);
-      retStr = [new Date(s.x).toLocaleString(), 'BG: ' + s.bg.toFixed(1)]
+    if (sgv?.length > 0) {
+      setCurrBG(getNearestValue(currBGLinePos, sgv).bg.toFixed(1));
+      let currOpenAps = getNearestValue(currBGLinePos, openaps).openaps
+      setCurrIOB(currOpenAps.iob.iob.toFixed(1));
+      setCurrAct(currOpenAps.iob.activity.toFixed(3));
+      let currSug = currOpenAps.suggested;
+      setCurrCOB(currSug?.COB ? currSug.COB.toFixed(1) : "");
+      setCurrSens(currSug?.sensitivityRatio ? (currSug.sensitivityRatio*100).toFixed(0) : "");
+      // let s = getNearestValue(currBGLinePos, sgv);
+      // retStr = [new Date(s.x).toLocaleString(), 'BG: ' + s.bg.toFixed(1)]
     }
     return retStr;
   }
 
   function getNearestValue(val, data) {
-    return data?.length>0 ? data.reduce((a, b) => Math.abs(new Date(b.x) - val) < Math.abs(new Date(a.x) - val) ? b : a) : null;
+    return data?.length > 0 ? data.reduce((a, b) => Math.abs(new Date(b.x) - val) < Math.abs(new Date(a.x) - val) ? b : a) : null;
   }
-
   return (
-    <div className="App" style={{ height: "80vh" }}>
-      <Line className="MainChart"
-        options={chartOptions}
-        data={chartData}
-        style={{
-          backgroundColor: "black",
-          // height: "50vh",
-          marginTop: "100px",
-          marginBottom: "50px"
-        }}
-      />
-      {/* <Line className="MainChart"
+    <div className="App">
+      <div className="info">
+        info
+        <table>
+          <tbody>
+            <tr>
+              <td>BG</td>
+              <td>{currBG}mmol</td>
+            </tr>
+            <tr>
+              <td>IOB</td>
+              <td>{currIOB}U</td>
+            </tr>
+            <tr>
+              <td>COB</td>
+              <td>{currCOB}g</td>
+            </tr>
+            <tr>
+              <td>Current Basal</td>
+              <td>{currBas}U</td>
+            </tr>
+            <tr>
+              <td>Activity</td>
+              <td>{currAct}</td>
+            </tr>
+            <tr>
+              <td>Autosens</td>
+              <td>{currSens}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style={{ height: "80vh" }}>
+        <Line className="MainChart"
+          options={chartOptions}
+          data={chartData}
+          style={{
+            backgroundColor: "black",
+            // height: "50vh",
+            marginTop: "100px",
+            marginBottom: "50px"
+          }}
+        />
+        {/* <Line className="MainChart"
         options={chartOptions}
         data={chartData}
         style={{
@@ -961,6 +1040,7 @@ function App() {
           marginBottom: "50px"
         }}
       /> */}
+      </div>
     </div>
   );
 }
