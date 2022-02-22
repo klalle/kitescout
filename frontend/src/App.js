@@ -60,7 +60,7 @@ function App() {
   const [mealBolus, setMealBolus] = useState();
   const [updateInProgress, setUpdateInProgress] = useState();
   const [profile, setProfile] = useState();
-  const [havePanned, setHavePanned] = useState();
+  // const [havePanned, setHavePanned] = useState();
   const [currInfo, setCurrInfo] = useState();
   const [hasStarted, setHasStarted] = useState();
   var localserver = "";
@@ -526,7 +526,7 @@ function App() {
       return mealInsu[val.index].insulin * 2;
     }
     function setMealCarbRadius(val) {
-      return mealInsu[val.index].carbs/5;
+      return mealInsu[val.index].carbs / 5;
     }
 
     setChartData({
@@ -666,7 +666,7 @@ function App() {
           showLine: true,
           yAxisID: 'y2',
           borderColor: RGB_blue,
-          backgroundColor: RGB_greena.replace("0.15","0.25"),
+          backgroundColor: RGB_greena.replace("0.15", "0.25"),
           fill: true,
           pointRadius: 0,
         }
@@ -705,6 +705,7 @@ function App() {
 
 
     }
+
     //console.log(sgv.length);
     // console.log(c.chart.scales.x.min)
     // if(chart.data.datasets)
@@ -722,7 +723,8 @@ function App() {
     if (c.chart.scales.x.min) {
       return c.chart.scales.x.min;
     }
-    return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
+    //return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
+    return new Date().getTime() - startWidth/2;
   }
   const setXmax = (c) => {
     if (c.chart.scales.x.max) {
@@ -732,8 +734,9 @@ function App() {
   }
 
 
-
-  const maxOffset = 1000 * 3600 * 2;
+  const startwidthHours = 12;
+  const startWidth = 1000 * 3600 * startwidthHours;
+  const maxOffset = startWidth/2;
   const stepSize = 1000 * 60 * 30; //[ms/5min]
   const chartOptions = {
     maintainAspectRatio: false,
@@ -746,6 +749,8 @@ function App() {
       display: true,
       text: 'KiteScout',
     },
+    //onmousedown: () => {console.log("nu");},
+    
     elements: {
       point: {
         radius: 3
@@ -866,7 +871,7 @@ function App() {
           onPanComplete: setInfoData, //buggy, jumps back when setting a setState-varable!
           onPan: checkIfMoreDataIsNeeded,
           onPanStart: (c) => {
-            if (!havePanned) setHavePanned(true);
+
             clearInfo();
           }
         }
@@ -971,7 +976,8 @@ function App() {
   var currBGLinePos = 0;
   var lastBGLinePos = -100;
   function redrawCurrBGLine(c) {
-    currBGLinePos = !havePanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
+    //currBGLinePos = !havePanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
+    currBGLinePos =  c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
     // if (Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 2) {
     //   lastBGLinePos = currBGLinePos;
     //   return currBGLinePos;
@@ -1002,8 +1008,9 @@ function App() {
     return retStr;
   }
 
-  function clearInfo() {
-    setCurrInfo(null);
+  async function clearInfo() {
+    //await new Promise(resolve => setTimeout(resolve, 1000));
+    //setCurrInfo(null); //gör tyvärr att allt laggar... 
   }
 
   function redrawCurrBGText(c) {
@@ -1050,9 +1057,9 @@ function App() {
             </tr>
           </tbody>
         </table>
-        <div style={{minHeight:"40px"}} title={currInfo?.reason ? currInfo.reason.split(";")[0] : ""}>
-        {currInfo?.reason? currInfo.reason.split(";")[1] : " "}<br />
-        {currInfo?.reason? currInfo.reason.split(";")[2] : " "}
+        <div style={{ minHeight: "40px" }} title={currInfo?.reason ? currInfo.reason.split(";")[0] : ""}>
+          {currInfo?.reason ? currInfo.reason.split(";")[1] : " "}<br />
+          {currInfo?.reason ? currInfo.reason.split(";")[2] : " "}
         </div>
       </div>
       <div style={{ height: "80vh" }}>
