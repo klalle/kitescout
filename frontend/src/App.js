@@ -711,7 +711,7 @@ function App() {
     if (c.chart.scales.x.min) {
       return c.chart.scales.x.min;
     }
-    return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 24) / stepSize) * stepSize);
+    return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
   }
   const setXmax = (c) => {
     if (c.chart.scales.x.max) {
@@ -852,7 +852,7 @@ function App() {
           mode: "x",
           speed: 10,
           threashold: 10,
-          //onPanComplete: (c) => console.log("NU"), //buggy, jumps back when setting a setState-varable!
+          onPanComplete: setInfoData, //buggy, jumps back when setting a setState-varable!
           onPan: checkIfMoreDataIsNeeded,
           onPanStart: (c) => { setHavePanned(true); }
         }
@@ -956,20 +956,19 @@ function App() {
   var lastBGLinePos = -100;
   function redrawCurrBGLine(c) {
     currBGLinePos = !havePanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
-    if (Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 2) {
-      lastBGLinePos = currBGLinePos;
-      return currBGLinePos;
-    }
-    return lastBGLinePos;
+    // if (Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 2) {
+    //   lastBGLinePos = currBGLinePos;
+    //   return currBGLinePos;
+    // }
+    return currBGLinePos;
   }
 
   function setTargetLine(c) {
     return openaps != undefined && openaps.length > 0 ? openaps[0].openaps.suggested.targetBG / 18 : -1;
   }
-  function redrawCurrBGText(c) {
-    //console.log(currBGLinePos);
+  function setInfoData(c) {
     var retStr = "";
-    if (sgv?.length > 0) {
+    if (sgv?.length) {
       setCurrBG(getNearestValue(currBGLinePos, sgv).bg.toFixed(1));
       let currOpenAps = getNearestValue(currBGLinePos, openaps).openaps
       setCurrIOB(currOpenAps.iob.iob.toFixed(1));
@@ -977,8 +976,22 @@ function App() {
       let currSug = currOpenAps.suggested;
       setCurrCOB(currSug?.COB ? currSug.COB.toFixed(1) : "");
       setCurrSens(currSug?.sensitivityRatio ? (currSug.sensitivityRatio*100).toFixed(0) : "");
-      // let s = getNearestValue(currBGLinePos, sgv);
-      // retStr = [new Date(s.x).toLocaleString(), 'BG: ' + s.bg.toFixed(1)]
+      lastBGLinePos = currBGLinePos;
+    }
+    return retStr;
+  }
+
+  function redrawCurrBGText(c) {
+    var retStr = "";
+    if (sgv?.length > 0 && Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 20) {
+      // setCurrBG(getNearestValue(currBGLinePos, sgv).bg.toFixed(1));
+      // let currOpenAps = getNearestValue(currBGLinePos, openaps).openaps
+      // setCurrIOB(currOpenAps.iob.iob.toFixed(1));
+      // setCurrAct(currOpenAps.iob.activity.toFixed(3));
+      // let currSug = currOpenAps.suggested;
+      // setCurrCOB(currSug?.COB ? currSug.COB.toFixed(1) : "");
+      // setCurrSens(currSug?.sensitivityRatio ? (currSug.sensitivityRatio*100).toFixed(0) : "");
+      lastBGLinePos = currBGLinePos;
     }
     return retStr;
   }
