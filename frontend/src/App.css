@@ -12,16 +12,19 @@ html, body  {
 }
 .info{
   color: rgb(128,128,128);
+  margin-top: 10px;
   /* background-color: bisque; */
 }
 .infoTable{
   color: rgb(128,128,128);
   /* background-color: green; */
   margin: auto;
+  margin-bottom: 10px;
+  text-align: right;
+
 }
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.infoTable td {
+  padding-left: 15px;
 }
 
 @media (prefers-reduced-motion: no-preference) {

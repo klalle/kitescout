@@ -634,8 +634,8 @@ function App() {
           type: 'scatter',
           showLine: true,
           yAxisID: 'y2',
-          borderColor: RGB_red,
-          backgroundColor: RGB_red,
+          borderColor: RGB_blue,
+          backgroundColor: RGB_bluea,
           fill: false,
           pointRadius: 0,
           hidden: true,
@@ -645,8 +645,8 @@ function App() {
           type: 'scatter',
           showLine: true,
           yAxisID: 'y2',
-          borderColor: 'rgb(0, 50, 128)',
-          backgroundColor: 'rgba(0, 100, 255, 0.2)',
+          borderColor: RGB_blue,
+          backgroundColor: RGB_bluea,
           fill: false,
           pointRadius: 0,
         }, {
@@ -655,21 +655,20 @@ function App() {
           type: 'scatter',
           showLine: true,
           yAxisID: 'y2',
-          borderColor: 'rgb(0, 50, 128)',
-          backgroundColor: 'rgba(0, 100, 255, 0.2)',
+          borderColor: RGB_blue,
+          backgroundColor: RGB_bluea,
           fill: true,
           pointRadius: 0,
         }, {
-          label: "Standard basal",
+          label: "basal active",
           data: basalProfileFilled,
           type: 'scatter',
           showLine: true,
           yAxisID: 'y2',
-          borderColor: 'rgb(0, 50, 128)',
-          backgroundColor: RGB_greena,
+          borderColor: RGB_blue,
+          backgroundColor: RGB_greena.replace("0.15","0.25"),
           fill: true,
           pointRadius: 0,
-          hidden: true,
         }
       ]
     });
@@ -1051,9 +1050,10 @@ function App() {
             </tr>
           </tbody>
         </table>
-        <br />
-        {currInfo?.reason?.split(";")[1]}<br />
-        {currInfo?.reason?.split(";")[2]}
+        <div style={{minHeight:"40px"}} title={currInfo?.reason ? currInfo.reason.split(";")[0] : ""}>
+        {currInfo?.reason? currInfo.reason.split(";")[1] : " "}<br />
+        {currInfo?.reason? currInfo.reason.split(";")[2] : " "}
+        </div>
       </div>
       <div style={{ height: "80vh" }}>
         <Line className="MainChart"
