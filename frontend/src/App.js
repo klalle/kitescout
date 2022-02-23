@@ -127,7 +127,7 @@ function App() {
       sgv.current = s;
 
       if (openaps.current) {
-        oa = oa.concat(openaps); //.slice(24*60/5*5); //only grab 5 days of data
+        oa = oa.concat(openaps.current); //.slice(24*60/5*5); //only grab 5 days of data
         //oa = oa.filter((item, pos) => oa.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
 
