@@ -1055,7 +1055,7 @@ function App() {
     var ret = reason ? reason.split(";") : "2";//replaceAll(";", "<br>") : "";
     if (ret?.length >= 2 && (ret[1].includes("Eventual BG") || ret[1].includes("minGuardBG"))) {
       let bg = ret[1].trim().replace("Eventual BG","bg").replace("<", " ").split(" ")[1];
-      ret = ret[0].split(",").find(x => x.includes(bg)).trim();
+      ret = ret[0].split(",").find(x => x.includes(bg))?.trim();
     }
     return ret;
   }
