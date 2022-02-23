@@ -23,6 +23,7 @@ import { Chart as ChartJS } from 'chart.js';
 import { Line, Chart } from 'react-chartjs-2';
 import React, { useState, useEffect, useRef } from 'react';
 import ReactTooltip from 'react-tooltip';
+import { NavLink } from 'react-router-dom';
 
 ChartJS.register(
   zoomPlugin,
@@ -41,7 +42,9 @@ ChartJS.register(
   Filler
 )
 
-
+//TODO
+//target som en range
+//datasets group basals
 function App() {
 
   // const variableLineColor = {
@@ -331,8 +334,8 @@ function App() {
         eProfile.forEach((b) => {
           let bTime = returnDateWithHHMM(currTime, b.time);
           if (bTime >= startProfileDate
-            && bTime < new Date().setTime(new Date().getTime() + 2 * 3600 * 1000)
-            && bTime > new Date().setTime(firstBGtime - 5 * 3600 * 1000)) {
+            && bTime < new Date().setTime(new Date().getTime() + 6 * 3600 * 1000) //start 6h before currtime
+            && bTime > new Date().setTime(firstBGtime - 6 * 3600 * 1000)) {
             if (lastVal) {
               basalProfile.push([
                 bTime,
@@ -584,7 +587,7 @@ function App() {
           pointRadius: setBolusRadius,
         },
         {
-          label: "meal-bolus",
+          label: "bolus",
           data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv.current).bg - 1, x.insulin]),
           type: 'scatter',
           showLine: false,
@@ -596,7 +599,7 @@ function App() {
           // pointRadius: setBolusRadius,
         },
         {
-          label: "meal-carbs",
+          label: "meal-cob",
           data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv.current).bg + 1, x.carbs]),
           type: 'scatter',
           showLine: false,
@@ -746,6 +749,7 @@ function App() {
   }
 
   const setXmin = (c) => {
+    console.log(ahead.current)
     if (!ahead.current && c.chart.scales.x.min) {
       return c.chart.scales.x.min;
     }
@@ -768,9 +772,7 @@ function App() {
     maintainAspectRatio: false,
     responsive: true,
 
-    legend: {
-      position: 'top'
-    },
+
     title: {
       display: true,
       text: 'KiteScout',
@@ -865,6 +867,90 @@ function App() {
       // }
     },
     plugins: {
+      legend: {
+        labels: {
+          filter: (e, l) => {
+            if (e.text.includes("basal") && e.text != "basal") return null; //only show one basal
+            if (e.text.includes("cob") && e.text != "cob") return null;
+            return e;
+          },
+          // color: (e, l) => {
+          //  // font color of labels
+          //   return RGB_green;
+          // },
+          //   generateLabels: (chart) => {
+          //     const { data } = chart;
+          //     if (data.datasets) {
+          //       return data.datasets.map((ds, i) => {
+          //         const meta = chart.getDatasetMeta(0);
+          //         // const ds = data.datasets[0];
+          //          const arc = meta.data[i];
+          //         // const custom = (arc && arc.custom) || {};
+          //         // const { getValueAtIndexOrDefault } = Chart.helpers;
+          //         // const arcOpts = chart.options.elements.arc;
+          //         // const fill = custom.backgroundColor ? custom.backgroundColor : getValueAtIndexOrDefault(ds.backgroundColor, i, arcOpts.backgroundColor);
+          //         // const stroke = custom.borderColor ? custom.borderColor : getValueAtIndexOrDefault(ds.borderColor, i, arcOpts.borderColor);
+          //         // const bw = custom.borderWidth ? custom.borderWidth : getValueAtIndexOrDefault(ds.borderWidth, i, arcOpts.borderWidth);
+          //         // const value = chart.config.data.datasets[arc._datasetIndex].data[arc._index];
+
+          //         return {
+          //           text: `${ds.label}`,
+          //           fillStyle: ds.fill,
+          //           strokeStyle: ds.backgroundColor,
+          //           lineWidth: 1,
+          //           hidden: Number.isNaN(ds.data[i]) || meta.data[i].hidden,
+          //           index: i,
+          //         };
+          //       });
+          //     }
+          //     return [];
+
+          // }
+        },
+        position: 'top',
+        onHover: (event, activeElements) => {
+          event.native.target.style.cursor = 'pointer';
+        },
+        onLeave: (event, activeElements) => {
+          event.native.target.style.cursor = 'auto';
+        },
+
+        onClick: function (e, legendItem, a) {
+
+          function setHidden(name, ci) {
+            ci.data.datasets.forEach(function (e, i) {
+              var meta = ci.getDatasetMeta(i);
+              let isHidden = meta.hidden ? meta.hidden : false;
+              if (e.label.includes(name)) {
+                if (isHidden) {
+                  meta.hidden = null;
+                }
+                else {
+                  meta.hidden = true;
+                }
+              }
+            });
+          }
+          var index = legendItem.datasetIndex;
+          let name = legendItem.text;
+          var ci = this.chart;
+          let meta = ci.getDatasetMeta(index);
+          let isHidden = legendItem.hidden ? legendItem.hidden : meta.hidden ? meta.hidden : false;
+          if (name == "basal" || name == "cob" || name == "bolus") {
+            setHidden(name, ci);
+          }
+          else if (isHidden) {
+            meta.hidden = null;
+            ci.data.datasets[index].hidden = null;
+          }
+          else {
+            meta.hidden = true;
+          }
+
+
+          ci.update();
+        },
+      },
       zoom: {
         limits: {
           x: { min: 0, max: new Date().getTime() + 1000 * 3600 * 24, minRange: 50 },
@@ -905,7 +991,7 @@ function App() {
               ret = context.raw.bolus + 'U';
             } else if (label == "meal-bolus") {
               ret = context.raw[2] + 'U';
-            } else if (label == "meal-carbs") {
+            } else if (label == "meal-cob") {
               ret = context.raw[2] + 'g';
             }
             return ret;
@@ -1011,14 +1097,14 @@ function App() {
   }
   function setInfoData(c) {
     var retStr = "";
-    if (sgv.current?.length) {
+    if (sgv.current) {
       let currOpenAps = getNearestValue(currBGLinePos, openaps.current).openaps
       let currSug = currOpenAps.suggested;
       let bs = getNearestValue(currBGLinePos, sgv.current);
-      if(bs.x==sgv.current[0].x){
+      if (bs.x >= sgv.current[2].x) {
         ahead.current = true;
-      }else{
-        ahead.current=false;
+      } else {
+        ahead.current = false;
       }
       setCurrInfo({
         bg: bs.bg.toFixed(1),
@@ -1061,7 +1147,7 @@ function App() {
   function createTooltip(reason) {
     var ret = reason ? reason.split(";") : "2";//replaceAll(";", "<br>") : "";
     if (ret?.length >= 2 && (ret[1].includes("Eventual BG") || ret[1].includes("minGuardBG"))) {
-      let bg = ret[1].trim().replace("Eventual BG","bg").replace("<", " ").split(" ")[1];
+      let bg = ret[1].trim().replace("Eventual BG", "bg").replace("<", " ").split(" ")[1];
       ret = ret[0].split(",").find(x => x.includes(bg))?.trim();
     }
     return ret;
@@ -1093,14 +1179,14 @@ function App() {
           </tbody>
         </table>
         {/* <ReactTooltip type={currInfo?.reason ? currInfo.reason.split(";")[0] : ""} event="click"> */}
-        <div style={{ minHeight: "40px", maxWidth:"500px", margin:"auto" }} data-tip={currInfo ? currInfo.reason : ""} >
-        
+        <div style={{ minHeight: "40px", maxWidth: "500px", margin: "auto" }} data-tip={currInfo ? currInfo.reason : ""} >
+
           {currInfo?.reason ? "(" + createTooltip(currInfo?.reason) + ") " + currInfo.reason.split(";")[1] : " "}<br />
-          
+
           {currInfo?.reason ? currInfo.reason.split(";")[2] : " "}
         </div>
         {/* </ReactTooltip> */}
-        <ReactTooltip multiline={true} className="tooltip"/>
+        <ReactTooltip multiline={true} className="tooltip" />
       </div>
       <div style={{ height: "80vh" }}>
         <Line className="MainChart"
