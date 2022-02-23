@@ -22,6 +22,7 @@ import {
 import { Chart as ChartJS } from 'chart.js';
 import { Line, Chart } from 'react-chartjs-2';
 import React, { useState, useEffect, useRef } from 'react';
+import ReactTooltip from 'react-tooltip';
 
 ChartJS.register(
   zoomPlugin,
@@ -1049,6 +1050,15 @@ function App() {
   function getNearestValue(val, data) {
     return data?.length > 0 ? data.reduce((a, b) => Math.abs(new Date(b.x) - val) < Math.abs(new Date(a.x) - val) ? b : a) : null;
   }
+
+  function createTooltip(reason) {
+    var ret = reason ? reason.split(";") : "2";//replaceAll(";", "<br>") : "";
+    if (ret?.length >= 2 && (ret[1].includes("Eventual BG") || ret[1].includes("minGuardBG"))) {
+      let bg = ret[1].trim().replace("Eventual BG","bg").replace("<", " ").split(" ")[1];
+      ret = ret[0].split(",").find(x => x.includes(bg)).trim();
+    }
+    return ret;
+  }
   return (
     <div className="App">
       <div className="info">
@@ -1075,10 +1085,15 @@ function App() {
             </tr>
           </tbody>
         </table>
-        <div style={{ minHeight: "40px" }} title={currInfo?.reason ? currInfo.reason.split(";")[0] : ""}>
-          {currInfo?.reason ? currInfo.reason.split(";")[1] : " "}<br />
+        {/* <ReactTooltip type={currInfo?.reason ? currInfo.reason.split(";")[0] : ""} event="click"> */}
+        <div style={{ minHeight: "40px", maxWidth:"500px", margin:"auto" }} data-tip={currInfo ? currInfo.reason : ""} >
+        
+          {currInfo?.reason ? "(" + createTooltip(currInfo?.reason) + ") " + currInfo.reason.split(";")[1] : " "}<br />
+          
           {currInfo?.reason ? currInfo.reason.split(";")[2] : " "}
         </div>
+        {/* </ReactTooltip> */}
+        <ReactTooltip multiline={true} className="tooltip"/>
       </div>
       <div style={{ height: "80vh" }}>
         <Line className="MainChart"
