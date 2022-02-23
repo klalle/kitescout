@@ -61,6 +61,7 @@ function App() {
   const mealBolus = useRef();
   const profile = useRef();
   const updateInProgress = useRef(false);
+  const ahead = useRef(true);
   // const [havePanned, setHavePanned] = useState();
   const hasStarted = useRef(false);
   const [currInfo, setCurrInfo] = useState();
@@ -745,14 +746,14 @@ function App() {
   }
 
   const setXmin = (c) => {
-    if (c.chart.scales.x.min) {
+    if (!ahead.current && c.chart.scales.x.min) {
       return c.chart.scales.x.min;
     }
     //return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
     return new Date().getTime() - startWidth / 2;
   }
   const setXmax = (c) => {
-    if (c.chart.scales.x.max) {
+    if (!ahead.current && c.chart.scales.x.max) {
       return c.chart.scales.x.max;
     }
     return new Date().getTime() + maxOffset;
@@ -1013,8 +1014,14 @@ function App() {
     if (sgv.current?.length) {
       let currOpenAps = getNearestValue(currBGLinePos, openaps.current).openaps
       let currSug = currOpenAps.suggested;
+      let bs = getNearestValue(currBGLinePos, sgv.current);
+      if(bs.x==sgv.current[0].x){
+        ahead.current = true;
+      }else{
+        ahead.current=false;
+      }
       setCurrInfo({
-        bg: getNearestValue(currBGLinePos, sgv.current).bg.toFixed(1),
+        bg: bs.bg.toFixed(1),
         iob: currOpenAps.iob.iob.toFixed(1),
         act: currOpenAps.iob.activity.toFixed(3),
         cob: currSug?.COB ? currSug.COB.toFixed(1) : "",
