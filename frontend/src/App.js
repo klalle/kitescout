@@ -21,7 +21,7 @@ import {
 } from 'chart.js';
 import { Chart as ChartJS } from 'chart.js';
 import { Line, Chart } from 'react-chartjs-2';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 ChartJS.register(
   zoomPlugin,
@@ -54,15 +54,16 @@ function App() {
 
   const [chartData, setChartData] = useState({ datasets: [] });
   //const [chartOptions, setChartOptions] = useState({});
-  const [openaps, setOpenaps] = useState();
-  const [sgv, setSgv] = useState();
-  const [tempBasal, setTempBasal] = useState();
-  const [mealBolus, setMealBolus] = useState();
-  const [updateInProgress, setUpdateInProgress] = useState();
-  const [profile, setProfile] = useState();
+  const sgv = useRef();
+  const openaps = useRef();
+  const tempBasal = useRef();
+  const mealBolus = useRef();
+  const profile = useRef();
+  const updateInProgress = useRef(false);
   // const [havePanned, setHavePanned] = useState();
+  const hasStarted = useRef(false);
   const [currInfo, setCurrInfo] = useState();
-  const [hasStarted, setHasStarted] = useState();
+
   var localserver = "";
   if (process.env.REACT_APP_LOCALSERVER) localserver = "http://localhost:5000";
 
@@ -70,22 +71,27 @@ function App() {
   const lowThresh = 3.5;
 
   useEffect(() => {
-    if (hasStarted) {
-      setData();
-      setInfoData();
+    if (hasStarted.current) {
+      // setData();
+      // setInfoData();
     }
   }, [tempBasal]);
 
   useEffect(async () => {
-    setHasStarted(true);
+    hasStarted.current = true;
     await getData(new Date(), new Date().setTime(new Date().getTime() - 1000 * 3600 * 48));
+    const interval = setInterval(async () => {
+      console.log('Fetching new data...');
+      await getData(new Date(), new Date().setTime(new Date().getTime() - 1000 * 30)); //only fetch newest data
+    }, 1000 * 30);
+    return () => clearInterval(interval);
   }, []);
 
   const nrToGet = 200;
 
   const getData = async (toDate = new Date(), fromDate = null) => {
     let start = new Date();
-    setUpdateInProgress(true);
+    updateInProgress.current = true;
     try {
       if (!fromDate) {
         fromDate = new Date(toDate.getTime());
@@ -103,48 +109,57 @@ function App() {
         axios.get(localserver + "/getmealbolus", { params: { datefrom: fromDate, dateto: toDate } }),
       ]);
 
+      let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
 
       let oa = openapsRes.data.map(s => (({ created_at, configuration, openaps }) => ({
         x: created_at, configuration: configuration, openaps: openaps
       }))(s));
-      if (openaps) {
-        oa = openaps.concat(oa); //.slice(24*60/5*5); //only grab 5 days of data
-      }
-      if (oa)
-        setOpenaps(oa);
 
-      let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
-      if (sgv) {
-        s = sgv.concat(s);
+      if (sgv.current && openaps.current && s.length == 0 && oa.length == 0) {
+        console.log("nothing has changed since last fetch!");
+        return;
       }
-      setSgv(s);
+
+      if (sgv.current) {
+        s = s.concat(sgv.current);
+        //s = s.filter((item, pos) => s.findIndex(it => it.x == item.x) == pos); //remove douplicates
+      }
+      sgv.current = s;
+
+      if (openaps.current) {
+        oa = oa.concat(openaps); //.slice(24*60/5*5); //only grab 5 days of data
+        //oa = oa.filter((item, pos) => oa.findIndex(it => it.x == item.x) == pos); //remove douplicates
+      }
+
+      openaps.current = oa;
+
 
       let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({
         x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson)
       }))(s));
-      if (profile) {
-        p = profile.concat(p)
+      if (profile.current) {
+        p = p.concat(profile.current);
         p = p.filter((item, pos) => p.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
-      setProfile(p);
+      profile.current = p;
 
       let m = mealbolusRes.data.map(s => (({ created_at, insulin, carbs }) => ({
         x: created_at, insulin: insulin, carbs: carbs
       }))(s));
-      if (mealBolus) {
-        m = mealBolus.concat(m);
+      if (mealBolus.current) {
+        m = m.concat(mealBolus.current);
         m = m.filter((item, pos) => m.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
-      setMealBolus(m);
+      mealBolus.current = m;
 
       let b = basalRes.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({
         x: created_at, duration: durationInMilliseconds, basal: rate
       }))(s));
-      if (tempBasal) {
-        b = tempBasal.concat(b);
+      if (tempBasal.current) {
+        b = b.concat(tempBasal.current);
         b = b.filter((item, pos) => b.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
-      setTempBasal(b);
+      tempBasal.current = b;
 
 
 
@@ -152,6 +167,8 @@ function App() {
       console.log(e);
     }
     console.log("getdata: " + (new Date() - start) + "ms")
+    setData();
+    setInfoData();
   };
 
   const RGB_red = 'rgb(255,0,0)';
@@ -173,12 +190,19 @@ function App() {
   let reason = [];
 
   function setData() {
+    bg = [];
+    iob = [];
+    cob = [];
+    sens = [];
+    smb = [];
+    mealInsu = [];
+    reason = [];
     let start = new Date();
-    if (!sgv || sgv.length == 0) {
+    if (!sgv.current || sgv.current.length == 0) {
       alert("No data to show... try scrolling back in time or check your CONNSTR_mongo in Heroku!")
       return;
     };
-    sgv.forEach((e, index) => {
+    sgv.current.forEach((e, index) => {
       //if (index < 500) {
       bg.push([
         new Date(e.x),
@@ -189,7 +213,7 @@ function App() {
     let firstBGtime = bg[bg.length - 1][0].getTime();
     let lastBGtime = bg[0][0].getTime();
 
-    mealBolus?.forEach((e, index) => {
+    mealBolus?.current.forEach((e, index) => {
       //if (index < 500) {
       mealInsu.push({
         x: new Date(e.x),
@@ -200,7 +224,7 @@ function App() {
     });
     var COBExists = false;
     var lastSens = null;
-    openaps.forEach((e, index) => {
+    openaps.current.forEach((e, index) => {
 
       iob.push({
         x: new Date(e.x),
@@ -278,7 +302,7 @@ function App() {
 
     let basalProfile = [];
     let basalProfileFilled = [];
-    let realProfiles = profile.filter(e => e.duration == 0);
+    let realProfiles = profile.current.filter(e => e.duration == 0);
     //realProfiles.reverse();
     var lastProfileStartTime = new Date(); //~lastBGtime
     var lastProfileStartVal = null;
@@ -327,7 +351,7 @@ function App() {
     let tempBasProf = [];
 
     lastProfileStartTime = new Date(); //set to midnight today
-    const tempProf = profile.filter(e => e.duration > 0);
+    const tempProf = profile.current.filter(e => e.duration > 0);
     tempProf.forEach((e) => {
       let eProfile = e.profileJson.basal.reverse(); //reverses the array inplace as well!
       let durationms = e.duration * 60 * 1000;
@@ -407,7 +431,7 @@ function App() {
 
 
     let tempBasLoop = [];
-    tempBasal?.forEach((e, index) => {
+    tempBasal?.current.forEach((e, index) => {
       let t = new Date(e.x).getTime();
       if (t > firstBGtime) {
         tempBasLoop.push([
@@ -461,7 +485,7 @@ function App() {
       }
       return basalProfile[0][1];
     }
-    var lastTime = tempBasLoop[0][0];
+    var lastTime = new Date().getTime();
     var lastVal = null;
     tempBasLoop.forEach((tp) => {
       if (tp[1] == null && lastVal == null && lastTime - tp[0] > 1000) {
@@ -559,19 +583,19 @@ function App() {
         },
         {
           label: "meal-bolus",
-          data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv).bg - 1, x.insulin]),
+          data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv.current).bg - 1, x.insulin]),
           type: 'scatter',
           showLine: false,
           yAxisID: 'y',
           borderColor: RGB_blue,
-          backgroundColor: RGB_orangea.replace("0.15","0.25"),
+          backgroundColor: RGB_orangea.replace("0.15", "0.25"),
           fill: false,
           pointRadius: setMealBolusRadius,
           // pointRadius: setBolusRadius,
         },
         {
           label: "meal-carbs",
-          data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv).bg + 1, x.carbs]),
+          data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv.current).bg + 1, x.carbs]),
           type: 'scatter',
           showLine: false,
           yAxisID: 'y',
@@ -673,7 +697,7 @@ function App() {
       ]
     });
 
-    setUpdateInProgress(false);
+    updateInProgress.current = false;
     console.log("setdata: " + (new Date() - start) + "ms")
 
   }
@@ -694,10 +718,10 @@ function App() {
   const checkIfMoreDataIsNeeded = async (c) => {
     if (updateInProgress) return;
     //console.log(new Date(sgv[sgv.length-1].x).getTime());
-    let firstDataDate = new Date(sgv[sgv.length - 1].x);
+    let firstDataDate = new Date(sgv.current[sgv.current.length - 1].x);
     //console.log(sgv.length);
     if (c.chart.scales.x.min < firstDataDate.getTime() + 1000 * 3600 * 4) {
-      setUpdateInProgress(true);
+      updateInProgress = true;
       //c.chart.stop(); // make sure animations are not running
 
       await getData(new Date(firstDataDate.getTime() - 1000));
@@ -724,7 +748,7 @@ function App() {
       return c.chart.scales.x.min;
     }
     //return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
-    return new Date().getTime() - startWidth/2;
+    return new Date().getTime() - startWidth / 2;
   }
   const setXmax = (c) => {
     if (c.chart.scales.x.max) {
@@ -736,7 +760,7 @@ function App() {
 
   const startwidthHours = 12;
   const startWidth = 1000 * 3600 * startwidthHours;
-  const maxOffset = startWidth/2;
+  const maxOffset = startWidth / 2;
   const stepSize = 1000 * 60 * 30; //[ms/5min]
   const chartOptions = {
     maintainAspectRatio: false,
@@ -750,7 +774,7 @@ function App() {
       text: 'KiteScout',
     },
     //onmousedown: () => {console.log("nu");},
-    
+
     elements: {
       point: {
         radius: 3
@@ -772,9 +796,6 @@ function App() {
         // time: {
         //   unit: 'minute'
         // }
-        callback: (value, index, values) => {
-          console.log("s")
-        },
 
         ticks: {
           autoSkip: true,
@@ -799,7 +820,7 @@ function App() {
       y: {
         position: 'left',
         min: -10,
-        max: sgv == undefined ? 20 : Math.ceil(Math.max(...sgv.map(x => x.bg)) / 5) * 5 + 5,
+        max: sgv.current == undefined ? 20 : Math.ceil(Math.max(...sgv.current.map(x => x.bg)) / 5) * 5 + 5,
         ticks: {
           min: 0,
           stepSize: 1,
@@ -820,7 +841,7 @@ function App() {
       y3: {
         position: 'right',
         min: -20,
-        max: openaps == undefined ? 5 : Math.max(...openaps.map(x => x.openaps.suggested?.COB ? Math.max(x.openaps.suggested?.COB / 10, x.openaps.suggested?.IOB) : 0)) + 1,
+        max: openaps.current == undefined ? 5 : Math.max(...openaps.current.map(x => x.openaps.suggested?.COB ? Math.max(x.openaps.suggested?.COB / 10, x.openaps.suggested?.IOB) : 0)) + 1,
         ticks: {
           display: false
         }
@@ -870,10 +891,7 @@ function App() {
           threashold: 10,
           onPanComplete: setInfoData, //buggy, jumps back when setting a setState-varable!
           onPan: checkIfMoreDataIsNeeded,
-          onPanStart: (c) => {
-
-            clearInfo();
-          }
+          //onPanStart: clearInfo
         }
       },
       tooltip: {
@@ -961,7 +979,7 @@ function App() {
             borderWidth: 0.5,
             label: {
               backgroundColor: 'rgba(0,0,0,0)',
-              content: redrawCurrBGText,
+              //content: redrawCurrBGText,
               enabled: false,
               position: 'start', //position top
               yAdjust: 0, //down offset from position
@@ -977,7 +995,7 @@ function App() {
   var lastBGLinePos = -100;
   function redrawCurrBGLine(c) {
     //currBGLinePos = !havePanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
-    currBGLinePos =  c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
+    currBGLinePos = c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
     // if (Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 2) {
     //   lastBGLinePos = currBGLinePos;
     //   return currBGLinePos;
@@ -986,21 +1004,21 @@ function App() {
   }
 
   function setTargetLine(c) {
-    return openaps != undefined
-      && openaps.length > 0 ? openaps.find(x => x.openaps?.suggested).openaps.suggested.targetBG / 18 : -1;
+    return openaps.current != undefined
+      && openaps.current.length > 0 ? openaps.current.find(x => x.openaps?.suggested).openaps.suggested.targetBG / 18 : -1;
   }
   function setInfoData(c) {
     var retStr = "";
-    if (sgv?.length) {
-      let currOpenAps = getNearestValue(currBGLinePos, openaps).openaps
+    if (sgv.current?.length) {
+      let currOpenAps = getNearestValue(currBGLinePos, openaps.current).openaps
       let currSug = currOpenAps.suggested;
       setCurrInfo({
-        bg: getNearestValue(currBGLinePos, sgv).bg.toFixed(1),
+        bg: getNearestValue(currBGLinePos, sgv.current).bg.toFixed(1),
         iob: currOpenAps.iob.iob.toFixed(1),
         act: currOpenAps.iob.activity.toFixed(3),
         cob: currSug?.COB ? currSug.COB.toFixed(1) : "",
         sens: currSug?.sensitivityRatio ? (currSug.sensitivityRatio * 100).toFixed(0) : "",
-        basal: getNearestValue(currBGLinePos, tempBasal).basal,
+        basal: getNearestValue(currBGLinePos, tempBasal.current).basal,
         reason: currSug?.reason
       })
       lastBGLinePos = currBGLinePos;
@@ -1014,18 +1032,18 @@ function App() {
   }
 
   function redrawCurrBGText(c) {
-    var retStr = "";
-    if (sgv?.length > 0 && Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 20) {
-      // setCurrBG(getNearestValue(currBGLinePos, sgv).bg.toFixed(1));
-      // let currOpenAps = getNearestValue(currBGLinePos, openaps).openaps
-      // setCurrIOB(currOpenAps.iob.iob.toFixed(1));
-      // setCurrAct(currOpenAps.iob.activity.toFixed(3));
-      // let currSug = currOpenAps.suggested;
-      // setCurrCOB(currSug?.COB ? currSug.COB.toFixed(1) : "");
-      // setCurrSens(currSug?.sensitivityRatio ? (currSug.sensitivityRatio*100).toFixed(0) : "");
-      lastBGLinePos = currBGLinePos;
-    }
-    return retStr;
+    // var retStr = "";
+    // if (sgv.current?.length > 0 && Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 20) {
+    //   // setCurrBG(getNearestValue(currBGLinePos, sgv).bg.toFixed(1));
+    //   // let currOpenAps = getNearestValue(currBGLinePos, openaps).openaps
+    //   // setCurrIOB(currOpenAps.iob.iob.toFixed(1));
+    //   // setCurrAct(currOpenAps.iob.activity.toFixed(3));
+    //   // let currSug = currOpenAps.suggested;
+    //   // setCurrCOB(currSug?.COB ? currSug.COB.toFixed(1) : "");
+    //   // setCurrSens(currSug?.sensitivityRatio ? (currSug.sensitivityRatio*100).toFixed(0) : "");
+    //   lastBGLinePos = currBGLinePos;
+    // }
+    // return retStr;
   }
 
   function getNearestValue(val, data) {
