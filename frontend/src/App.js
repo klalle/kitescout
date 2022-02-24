@@ -68,6 +68,7 @@ function App() {
   const lastFetch = useRef(new Date().setTime(new Date().getTime() - 1000 * 3600 * 48));
   // const [havePanned, setHavePanned] = useState();
   const hasStarted = useRef(false);
+  const currBGLinePos = useRef(0);
   const [currInfo, setCurrInfo] = useState();
 
   var localserver = "";
@@ -93,8 +94,6 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const nrToGet = 100;
-
   const getData = async (fromDate, toDate = new Date(), reverse = false) => {
     let start = new Date();
     updateInProgress.current = true;
@@ -113,16 +112,23 @@ function App() {
       ]);
 
       let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
-
+      if(sgvRes.data.length == 1 && openapsRes.data.length == 0){
+        console.log("BG but no Openaps...")
+        console.log("From: " + fromDate);
+        console.log("To: " + toDate);
+      }
       let oa = openapsRes.data.map(s => (({ created_at, configuration, openaps }) => ({
         x: created_at, configuration: configuration, openaps: openaps
       }))(s));
 
       if (sgv.current && openaps.current && s.length == 0 && oa.length == 0) {
         console.log("nothing has changed since last fetch!");
+        console.log("From: " + fromDate);
+        console.log("To: " + toDate);
         updateInProgress.current = false;
         return;
       }
+      console.log("Found: \n" + s.length + " BG\n" + oa.length + " openaps treatments");
 
       if (sgv.current) {
         // if(new Date(s[0].x) > (sgv.current[0].x)){
@@ -690,7 +696,7 @@ function App() {
           type: 'scatter',
           showLine: true,
           yAxisID: 'y',
-          borderColor: RGB_orange,
+          borderColor: RGB_red,
           fill: false,
           pointRadius: 0,
           lineBorderWidth: 0.5,
@@ -1091,11 +1097,10 @@ function App() {
     },
   };
 
-  var currBGLinePos = 0;
   var lastBGLinePos = -100;
   function redrawCurrBGLine(c) {
-    currBGLinePos = c.chart.scales.x.max - (c.chart.scales.x.max - c.chart.scales.x.min) / 2;
-    return currBGLinePos;
+    currBGLinePos.current = c.chart.scales.x.max - (c.chart.scales.x.max - c.chart.scales.x.min) / 2;
+    return currBGLinePos.current;
   }
 
   function setTargetLine(c) {
@@ -1105,12 +1110,12 @@ function App() {
   function setInfoData(c) {
     var retStr = "";
     if (sgv.current) {
-      let currOpenAps = getNearestValue(currBGLinePos, openaps.current).openaps
+      let currOpenAps = getNearestValue(currBGLinePos.current, openaps.current).openaps
       let currSug = currOpenAps.suggested;
       if (c) {
-        currBGLinePos = c.chart.scales.x.max - (c.chart.scales.x.max - c.chart.scales.x.min) / 2;
+        currBGLinePos.current = c.chart.scales.x.max - (c.chart.scales.x.max - c.chart.scales.x.min) / 2;
       }
-      let bs = getNearestValue(currBGLinePos, sgv.current);
+      let bs = getNearestValue(currBGLinePos.current, sgv.current);
       if (new Date(bs.x) >= new Date(sgv.current[2].x)) {
         ahead.current = true;
       } else {
@@ -1122,10 +1127,10 @@ function App() {
         act: currOpenAps.iob.activity.toFixed(3),
         cob: currSug?.COB ? currSug.COB.toFixed(1) : "",
         sens: currSug?.sensitivityRatio ? (currSug.sensitivityRatio * 100).toFixed(0) : "",
-        basal: getNearestValue(currBGLinePos, tempBasal.current).basal,
+        basal: getNearestValue(currBGLinePos.current, tempBasal.current).basal,
         reason: currSug?.reason
       })
-      lastBGLinePos = currBGLinePos;
+      //lastBGLinePos = currBGLinePos.current;
     }
     return retStr;
   }

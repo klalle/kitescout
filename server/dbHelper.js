@@ -43,7 +43,9 @@ async function getData(table, column, value, limitEntries = 100000, creationDate
             .sort({ $natural: -1 }) //bottomsup
             .limit(Number(limitEntries))
             .toArray();
-
+        // if(column == "openaps"){
+        //     console.log("db." + table + ".find({\n\tcreated_at:{\n\t\t$gt: '" + creationDateFrom  + "',\n\t\t$lt: '" + creationDateTo + "'\n\t}\n}).sort({created_at:-1});")
+        // }
     } catch (err) {
         console.log(err);
     } finally {

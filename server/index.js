@@ -90,6 +90,7 @@ app.get('/getopenaps', async function (req, res) {
         return;
     }
     let entries = await dbhelper.getData("devicestatus", "openaps", null, count, dateFrom, dateTo);
+    //console.log(entries);
     res.send(JSON.stringify(entries));
 });
 
