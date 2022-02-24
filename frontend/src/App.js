@@ -660,6 +660,7 @@ function App() {
           yAxisID: 'y2',
           borderColor: RGB_blue,
           backgroundColor: RGB_bluea,
+          borderDash: [8, 5],
           fill: false,
           pointRadius: 0,
         }, {
@@ -679,7 +680,7 @@ function App() {
           showLine: true,
           yAxisID: 'y2',
           borderColor: RGB_blue,
-          backgroundColor: RGB_greena.replace("0.15", "0.25"),
+          backgroundColor: 'rgba(0,0,150,0.6)',//RGB_greena.replace("0.15", "0.25"),
           fill: true,
           pointRadius: 0,
         },
