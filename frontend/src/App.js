@@ -65,6 +65,7 @@ function App() {
   const profile = useRef();
   const updateInProgress = useRef(false);
   const ahead = useRef(true);
+  const lastFetch = useRef(new Date().setTime(new Date().getTime() - 1000 * 3600 * 48));
   // const [havePanned, setHavePanned] = useState();
   const hasStarted = useRef(false);
   const [currInfo, setCurrInfo] = useState();
@@ -84,26 +85,23 @@ function App() {
 
   useEffect(async () => {
     hasStarted.current = true;
-    await getData(new Date(), new Date().setTime(new Date().getTime() - 1000 * 3600 * 48));
+    await getData(lastFetch.current);
     const interval = setInterval(async () => {
       console.log('Fetching new data...');
-      await getData(new Date(), new Date().setTime(new Date().getTime() - 1000 * 30)); //only fetch newest data
+      await getData(lastFetch.current); //only fetch newest data
     }, 1000 * 30);
     return () => clearInterval(interval);
   }, []);
 
-  const nrToGet = 200;
+  const nrToGet = 100;
 
-  const getData = async (toDate = new Date(), fromDate = null) => {
+  const getData = async (fromDate, toDate = new Date(), reverse=false) => {
     let start = new Date();
     updateInProgress.current = true;
     try {
-      if (!fromDate) {
-        fromDate = new Date(toDate.getTime());
-        fromDate = fromDate.setTime(fromDate.getTime() - 1000 * 3600 * 12);
-      }
+      if(!reverse) lastFetch.current = toDate;
+
       fromDate = new Date(fromDate).toISOString();
-      //fromDate = new Date(fromDate.setDate(fromDate.getDate() - 1)).toISOString();
       toDate = toDate.toISOString();
 
       const [sgvRes, openapsRes, profileRes, basalRes, mealbolusRes] = await Promise.all([
@@ -122,11 +120,18 @@ function App() {
 
       if (sgv.current && openaps.current && s.length == 0 && oa.length == 0) {
         console.log("nothing has changed since last fetch!");
+        updateInProgress.current = false;
         return;
       }
 
       if (sgv.current) {
+        // if(new Date(s[0].x) > (sgv.current[0].x)){
+        //   s = s.concat(sgv.current);
+        // }else{
+        //   s = sgv.current.concat(s);
+        // }
         s = s.concat(sgv.current);
+        s = s.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
         //s = s.filter((item, pos) => s.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
       sgv.current = s;
@@ -134,6 +139,7 @@ function App() {
       if (openaps.current) {
         oa = oa.concat(openaps.current); //.slice(24*60/5*5); //only grab 5 days of data
         //oa = oa.filter((item, pos) => oa.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        oa = oa.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
       }
 
       openaps.current = oa;
@@ -145,6 +151,7 @@ function App() {
       if (profile.current) {
         p = p.concat(profile.current);
         p = p.filter((item, pos) => p.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        p = p.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
       }
       profile.current = p;
 
@@ -154,6 +161,7 @@ function App() {
       if (mealBolus.current) {
         m = m.concat(mealBolus.current);
         m = m.filter((item, pos) => m.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        m = m.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
       }
       mealBolus.current = m;
 
@@ -163,6 +171,7 @@ function App() {
       if (tempBasal.current) {
         b = b.concat(tempBasal.current);
         b = b.filter((item, pos) => b.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        b = b.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
       }
       tempBasal.current = b;
 
@@ -721,15 +730,18 @@ function App() {
   // }
 
   const checkIfMoreDataIsNeeded = async (c) => {
-    if (updateInProgress) return;
+    if (updateInProgress.current) return;
     //console.log(new Date(sgv[sgv.length-1].x).getTime());
     let firstDataDate = new Date(sgv.current[sgv.current.length - 1].x);
     //console.log(sgv.length);
     if (c.chart.scales.x.min < firstDataDate.getTime() + 1000 * 3600 * 4) {
-      updateInProgress = true;
       //c.chart.stop(); // make sure animations are not running
+      var fromTime = new Date(firstDataDate.getTime() - 1000 * 3600 * 12);
+      if(fromTime.getTime()>c.chart.scales.x.min){
+        fromTime = new Date(c.chart.scales.x.min);
+      }
 
-      await getData(new Date(firstDataDate.getTime() - 1000));
+      await getData(fromTime, new Date(firstDataDate.getTime() - 1000), true);
       //c.chart.update('none');
 
 
@@ -749,7 +761,6 @@ function App() {
   }
 
   const setXmin = (c) => {
-    console.log(ahead.current)
     if (!ahead.current && c.chart.scales.x.min) {
       return c.chart.scales.x.min;
     }
@@ -874,17 +885,17 @@ function App() {
             if (e.text.includes("cob") && e.text != "cob") return null;
             return e;
           },
-          // color: (e, l) => {
-          //  // font color of labels
-          //   return RGB_green;
-          // },
-          //   generateLabels: (chart) => {
-          //     const { data } = chart;
-          //     if (data.datasets) {
-          //       return data.datasets.map((ds, i) => {
-          //         const meta = chart.getDatasetMeta(0);
-          //         // const ds = data.datasets[0];
-          //          const arc = meta.data[i];
+          color: (e, l) => {
+           // font color of labels
+            return RGB_green;
+          },
+            generateLabels: (chart) => { //generera egna labels... 
+              const { data } = chart;
+              if (data.datasets) {
+                return data.datasets.map((ds, i) => {
+                  const meta = chart.getDatasetMeta(0);
+                  // const ds = data.datasets[0];
+                   const arc = meta.data[i];
           //         // const custom = (arc && arc.custom) || {};
           //         // const { getValueAtIndexOrDefault } = Chart.helpers;
           //         // const arcOpts = chart.options.elements.arc;
@@ -893,19 +904,19 @@ function App() {
           //         // const bw = custom.borderWidth ? custom.borderWidth : getValueAtIndexOrDefault(ds.borderWidth, i, arcOpts.borderWidth);
           //         // const value = chart.config.data.datasets[arc._datasetIndex].data[arc._index];
 
-          //         return {
-          //           text: `${ds.label}`,
-          //           fillStyle: ds.fill,
-          //           strokeStyle: ds.backgroundColor,
-          //           lineWidth: 1,
-          //           hidden: Number.isNaN(ds.data[i]) || meta.data[i].hidden,
-          //           index: i,
-          //         };
-          //       });
-          //     }
-          //     return [];
+                  return {
+                    text: `${ds.label}`,
+                    fillStyle: ds.backgroundColor,
+                    strokeStyle: ds.borderColor,
+                    lineWidth: 1,
+                    hidden: Number.isNaN(ds.data[i]) || meta.data[i].hidden,
+                    index: i,
+                  };
+                });
+              }
+              return [];
 
-          // }
+          }
         },
         position: 'top',
         onHover: (event, activeElements) => {
@@ -1101,7 +1112,7 @@ function App() {
       let currOpenAps = getNearestValue(currBGLinePos, openaps.current).openaps
       let currSug = currOpenAps.suggested;
       let bs = getNearestValue(currBGLinePos, sgv.current);
-      if (bs.x >= sgv.current[2].x) {
+      if (new Date(bs.x) >= new Date(sgv.current[2].x)) {
         ahead.current = true;
       } else {
         ahead.current = false;
