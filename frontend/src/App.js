@@ -95,11 +95,11 @@ function App() {
 
   const nrToGet = 100;
 
-  const getData = async (fromDate, toDate = new Date(), reverse=false) => {
+  const getData = async (fromDate, toDate = new Date(), reverse = false) => {
     let start = new Date();
     updateInProgress.current = true;
     try {
-      if(!reverse) lastFetch.current = toDate;
+      if (!reverse) lastFetch.current = toDate;
 
       fromDate = new Date(fromDate).toISOString();
       toDate = toDate.toISOString();
@@ -131,7 +131,7 @@ function App() {
         //   s = sgv.current.concat(s);
         // }
         s = s.concat(sgv.current);
-        s = s.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
+        s = s.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
         //s = s.filter((item, pos) => s.findIndex(it => it.x == item.x) == pos); //remove douplicates
       }
       sgv.current = s;
@@ -139,7 +139,7 @@ function App() {
       if (openaps.current) {
         oa = oa.concat(openaps.current); //.slice(24*60/5*5); //only grab 5 days of data
         //oa = oa.filter((item, pos) => oa.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        oa = oa.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
+        oa = oa.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
       }
 
       openaps.current = oa;
@@ -151,7 +151,7 @@ function App() {
       if (profile.current) {
         p = p.concat(profile.current);
         p = p.filter((item, pos) => p.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        p = p.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
+        p = p.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
       }
       profile.current = p;
 
@@ -161,7 +161,7 @@ function App() {
       if (mealBolus.current) {
         m = m.concat(mealBolus.current);
         m = m.filter((item, pos) => m.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        m = m.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
+        m = m.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
       }
       mealBolus.current = m;
 
@@ -171,7 +171,7 @@ function App() {
       if (tempBasal.current) {
         b = b.concat(tempBasal.current);
         b = b.filter((item, pos) => b.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        b = b.sort((a,b) => new Date(a.x)<new Date(b.x) ? 1 : -1);
+        b = b.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
       }
       tempBasal.current = b;
 
@@ -640,7 +640,7 @@ function App() {
           fill: true,
           pointRadius: 0,
         },
-        
+
         {
           label: "%basal",
           data: tempBasProf,
@@ -738,7 +738,7 @@ function App() {
     if (c.chart.scales.x.min < firstDataDate.getTime() + 1000 * 3600 * 4) {
       //c.chart.stop(); // make sure animations are not running
       var fromTime = new Date(firstDataDate.getTime() - 1000 * 3600 * 12);
-      if(fromTime.getTime()>c.chart.scales.x.min){
+      if (fromTime.getTime() > c.chart.scales.x.min) {
         fromTime = new Date(c.chart.scales.x.min);
       }
 
@@ -890,32 +890,32 @@ function App() {
           //  // font color of labels
           //   return RGB_green;
           // },
-            generateLabels: (chart) => { //generera egna labels... 
-              const { data } = chart;
-              if (data.datasets) {
-                return data.datasets.map((ds, i) => {
-                  const meta = chart.getDatasetMeta(0);
-                  // const ds = data.datasets[0];
-                   const arc = meta.data[i];
-          //         // const custom = (arc && arc.custom) || {};
-          //         // const { getValueAtIndexOrDefault } = Chart.helpers;
-          //         // const arcOpts = chart.options.elements.arc;
-          //         // const fill = custom.backgroundColor ? custom.backgroundColor : getValueAtIndexOrDefault(ds.backgroundColor, i, arcOpts.backgroundColor);
-          //         // const stroke = custom.borderColor ? custom.borderColor : getValueAtIndexOrDefault(ds.borderColor, i, arcOpts.borderColor);
-          //         // const bw = custom.borderWidth ? custom.borderWidth : getValueAtIndexOrDefault(ds.borderWidth, i, arcOpts.borderWidth);
-          //         // const value = chart.config.data.datasets[arc._datasetIndex].data[arc._index];
+          generateLabels: (chart) => { //generera egna labels... 
+            const { data } = chart;
+            if (data.datasets) {
+              return data.datasets.map((ds, i) => {
+                const meta = chart.getDatasetMeta(0);
+                // const ds = data.datasets[0];
+                const arc = meta.data[i];
+                //         // const custom = (arc && arc.custom) || {};
+                //         // const { getValueAtIndexOrDefault } = Chart.helpers;
+                //         // const arcOpts = chart.options.elements.arc;
+                //         // const fill = custom.backgroundColor ? custom.backgroundColor : getValueAtIndexOrDefault(ds.backgroundColor, i, arcOpts.backgroundColor);
+                //         // const stroke = custom.borderColor ? custom.borderColor : getValueAtIndexOrDefault(ds.borderColor, i, arcOpts.borderColor);
+                //         // const bw = custom.borderWidth ? custom.borderWidth : getValueAtIndexOrDefault(ds.borderWidth, i, arcOpts.borderWidth);
+                //         // const value = chart.config.data.datasets[arc._datasetIndex].data[arc._index];
 
-                  return {
-                    text: `${ds.label}`,
-                    fillStyle: typeof ds.backgroundColor === 'string' ? ds.backgroundColor : (ds.label == "BG" ? RGB_greena : "rgba(0,0,0,0)"),
-                    strokeStyle: typeof ds.borderColor === 'string' ? ds.borderColor : RGB_green,
-                    lineWidth: 1,
-                    hidden: ds.hidden,//Number.isNaN(ds.data[i]) || meta.data[i].hidden,
-                    index: i,
-                  };
-                });
-              }
-              return [];
+                return {
+                  text: `${ds.label}`,
+                  fillStyle: typeof ds.backgroundColor === 'string' ? ds.backgroundColor : (ds.label == "BG" ? RGB_greena : "rgba(0,0,0,0)"),
+                  strokeStyle: typeof ds.borderColor === 'string' ? ds.borderColor : RGB_green,
+                  lineWidth: 1,
+                  hidden: ds.hidden,//Number.isNaN(ds.data[i]) || meta.data[i].hidden,
+                  index: i,
+                };
+              });
+            }
+            return [];
 
           }
         },
@@ -1094,12 +1094,7 @@ function App() {
   var currBGLinePos = 0;
   var lastBGLinePos = -100;
   function redrawCurrBGLine(c) {
-    //currBGLinePos = !havePanned ? c.chart.scales['x']._userMax - maxOffset : c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
-    currBGLinePos = c.chart.scales['x']._userMax - (c.chart.scales['x']._userMax - c.chart.scales['x']._userMin) / 2;
-    // if (Math.abs(currBGLinePos - lastBGLinePos) > 1000 * 60 * 2) {
-    //   lastBGLinePos = currBGLinePos;
-    //   return currBGLinePos;
-    // }
+    currBGLinePos = c.chart.scales.x.max - (c.chart.scales.x.max - c.chart.scales.x.min) / 2;
     return currBGLinePos;
   }
 
@@ -1112,6 +1107,9 @@ function App() {
     if (sgv.current) {
       let currOpenAps = getNearestValue(currBGLinePos, openaps.current).openaps
       let currSug = currOpenAps.suggested;
+      if (c) {
+        currBGLinePos = c.chart.scales.x.max - (c.chart.scales.x.max - c.chart.scales.x.min) / 2;
+      }
       let bs = getNearestValue(currBGLinePos, sgv.current);
       if (new Date(bs.x) >= new Date(sgv.current[2].x)) {
         ahead.current = true;
