@@ -640,32 +640,7 @@ function App() {
           fill: true,
           pointRadius: 0,
         },
-        {
-          label: "sens",
-          data: sens,
-          type: 'scatter',
-          showLine: true,
-          yAxisID: 'y',
-          borderColor: RGB_gray,
-          backgroundColor: RGB_graya,
-          fill: true,
-          pointRadius: 0,
-          lineBorderWidth: 0.5,
-          hidden: true,
-
-        },
-        {
-          label: "act",
-          data: iob.map(x => [x.x, x.act * 100]),
-          type: 'scatter',
-          showLine: true,
-          yAxisID: 'y',
-          borderColor: RGB_orange,
-          fill: false,
-          pointRadius: 0,
-          lineBorderWidth: 0.5,
-          hidden: true,
-        },
+        
         {
           label: "%basal",
           data: tempBasProf,
@@ -707,7 +682,32 @@ function App() {
           backgroundColor: RGB_greena.replace("0.15", "0.25"),
           fill: true,
           pointRadius: 0,
-        }
+        },
+        {
+          label: "act",
+          data: iob.map(x => [x.x, x.act * 100]),
+          type: 'scatter',
+          showLine: true,
+          yAxisID: 'y',
+          borderColor: RGB_orange,
+          fill: false,
+          pointRadius: 0,
+          lineBorderWidth: 0.5,
+          hidden: true,
+        },
+        {
+          label: "sens",
+          data: sens,
+          type: 'scatter',
+          showLine: true,
+          yAxisID: 'y',
+          borderColor: RGB_gray,
+          backgroundColor: RGB_graya,
+          fill: true,
+          pointRadius: 0,
+          lineBorderWidth: 0.5,
+          hidden: true,
+        },
       ]
     });
 
