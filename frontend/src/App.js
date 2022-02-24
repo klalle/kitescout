@@ -885,10 +885,10 @@ function App() {
             if (e.text.includes("cob") && e.text != "cob") return null;
             return e;
           },
-          color: (e, l) => {
-           // font color of labels
-            return RGB_green;
-          },
+          // color: (e, l) => {
+          //  // font color of labels
+          //   return RGB_green;
+          // },
             generateLabels: (chart) => { //generera egna labels... 
               const { data } = chart;
               if (data.datasets) {
@@ -906,10 +906,10 @@ function App() {
 
                   return {
                     text: `${ds.label}`,
-                    fillStyle: ds.backgroundColor,
-                    strokeStyle: ds.borderColor,
+                    fillStyle: typeof ds.backgroundColor === 'string' ? ds.backgroundColor : (ds.label == "BG" ? RGB_greena : "rgba(0,0,0,0)"),
+                    strokeStyle: typeof ds.borderColor === 'string' ? ds.borderColor : RGB_green,
                     lineWidth: 1,
-                    hidden: Number.isNaN(ds.data[i]) || meta.data[i].hidden,
+                    hidden: ds.hidden,//Number.isNaN(ds.data[i]) || meta.data[i].hidden,
                     index: i,
                   };
                 });
@@ -942,7 +942,7 @@ function App() {
               }
             });
           }
-          var index = legendItem.datasetIndex;
+          var index = legendItem.index;
           let name = legendItem.text;
           var ci = this.chart;
           let meta = ci.getDatasetMeta(index);
