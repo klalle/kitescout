@@ -65,7 +65,7 @@ function App() {
   const profile = useRef();
   const updateInProgress = useRef(false);
   const ahead = useRef(true);
-  const lastFetch = useRef(new Date().setTime(new Date().getTime() - 1000 * 3600 * 48));
+  const lastFetch = useRef(new Date().setTime(new Date().getTime() - 1000 * 3600 * 24));
   // const [havePanned, setHavePanned] = useState();
   const hasStarted = useRef(false);
   const currBGLinePos = useRef(0);
@@ -98,8 +98,9 @@ function App() {
     let start = new Date();
     updateInProgress.current = true;
     try {
-      if (!reverse) lastFetch.current = toDate;
-
+      if (!reverse) {
+        lastFetch.current = new Date(new Date(toDate).getTime() - 1000 * 3600).getTime(); //get one hour back (strangely it misses openaps if not...)
+      }
       fromDate = new Date(fromDate).toISOString();
       toDate = toDate.toISOString();
 
@@ -112,43 +113,54 @@ function App() {
       ]);
 
       let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
-      if(sgvRes.data.length == 1 && openapsRes.data.length == 0){
-        console.log("BG but no Openaps...")
-        console.log("From: " + fromDate);
-        console.log("To: " + toDate);
-      }
       let oa = openapsRes.data.map(s => (({ created_at, configuration, openaps }) => ({
         x: created_at, configuration: configuration, openaps: openaps
       }))(s));
 
-      if (sgv.current && openaps.current && s.length == 0 && oa.length == 0) {
-        console.log("nothing has changed since last fetch!");
-        console.log("From: " + fromDate);
-        console.log("To: " + toDate);
+      //console.log("Found: \n" + s.length + " BG\n" + oa.length + " openaps treatments");
+
+      var added = 0;
+
+      function addToAndSort(source, add) {
+        if (!reverse) {
+          let last = source[0];
+          if (last.x != add[0].x) {
+            var firstNewIndex = add.findIndex((it) => it.x == last.x);
+            source = add.slice(0,firstNewIndex).concat(source);
+            console.log("added: " + firstNewIndex);
+            added += firstNewIndex;
+          }
+        }else{
+          source = source.concat(add);
+
+          added += add.length;
+        }
+        return source;
+      }
+      if (sgv.current) {
+        sgv.current = addToAndSort(sgv.current, s)
+      } else {
+        added += s.length;
+        sgv.current = s;
+      }
+      if (openaps.current) {
+        openaps.current = addToAndSort(openaps.current, oa)
+        // oa = oa.concat(openaps.current); //.slice(24*60/5*5); //only grab 5 days of data
+        // //oa = oa.filter((item, pos) => oa.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        // oa = oa.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
+      } else {
+        added += s.length;
+        openaps.current = oa;
+
+      }
+
+      if(added == 0){
+        console.log("Nothing new!");
+        // console.log("From: " + fromDate);
+        // console.log("To: " + toDate);
         updateInProgress.current = false;
         return;
       }
-      console.log("Found: \n" + s.length + " BG\n" + oa.length + " openaps treatments");
-
-      if (sgv.current) {
-        // if(new Date(s[0].x) > (sgv.current[0].x)){
-        //   s = s.concat(sgv.current);
-        // }else{
-        //   s = sgv.current.concat(s);
-        // }
-        s = s.concat(sgv.current);
-        s = s.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
-        //s = s.filter((item, pos) => s.findIndex(it => it.x == item.x) == pos); //remove douplicates
-      }
-      sgv.current = s;
-
-      if (openaps.current) {
-        oa = oa.concat(openaps.current); //.slice(24*60/5*5); //only grab 5 days of data
-        //oa = oa.filter((item, pos) => oa.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        oa = oa.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
-      }
-
-      openaps.current = oa;
 
 
       let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({
