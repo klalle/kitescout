@@ -98,7 +98,7 @@ function App() {
     let start = new Date();
     updateInProgress.current = true;
     try {
-      
+
       fromDate = new Date(fromDate).toISOString();
       toDate = toDate.toISOString();
 
@@ -120,7 +120,7 @@ function App() {
       var added = 0;
 
       function addToAndSort(source, add) {
-        if(add.length==0) return source;
+        if (add.length == 0) return source;
         if (!reverse) {
           let last = source[0];
           if (last.x != add[0].x) {
@@ -159,15 +159,14 @@ function App() {
 
       }
 
-      if(added == 0){
+      if (added == 0) {
         console.log("Nothing new!");
         // console.log("From: " + fromDate);
         // console.log("To: " + toDate);
         updateInProgress.current = false;
         return;
-      }
-      if (!reverse) {
-        lastFetch.current = toDate; //new Date(new Date(toDate).getTime() - 1000 * 3600).getTime(); //get one hour back (strangely it misses openaps if not...)
+      } else if (!reverse && s.length>0 && oa.length>0) {
+        lastFetch.current = toDate;//new Date(new Date(toDate).getTime() - 1000 * 60 * 10).getTime(); //get 10min back (strangely it misses openaps if not...)
       }
 
       let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({

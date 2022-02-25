@@ -61,7 +61,7 @@ app.get('/getopenaps', async function (req, res) {
     let dateFrom = req.query.datefrom;
     let dateTo = req.query.dateto ? req.query.dateto : new Date().toISOString();
     let count = req.query.count ? req.query.count : 1000;
-    await delay(10); //atlas is buggy if all queries are executed simultaniously...
+    await delay(20); //atlas is buggy if all queries are executed simultaniously...
     res.set('Content-Type', 'application/json');
     if (isNotADate(dateFrom) || isNotADate(dateTo) || isNotClean(count)) {
         res.send('{"message":"Not a valid call!"}');
@@ -76,7 +76,7 @@ app.get('/gettempbasal', async function (req, res) {
     let dateFrom = req.query.datefrom;
     let dateTo = req.query.dateto ? req.query.dateto : new Date().toISOString();
     let count = req.query.count ? req.query.count : 1000;
-    await delay(20);
+    await delay(30);
     res.set('Content-Type', 'application/json');
     if (isNotADate(dateFrom) || isNotADate(dateTo) || isNotClean(count)) {
         res.send('{"message":"Not a valid call!"}');
@@ -90,7 +90,7 @@ app.get('/getmealbolus', async function (req, res) {
     let dateFrom = req.query.datefrom;
     let dateTo = req.query.dateto ? req.query.dateto : new Date().toISOString();
     let count = req.query.count ? req.query.count : 1000;
-    await delay(30);
+    await delay(40);
     res.set('Content-Type', 'application/json');
     if (isNotADate(dateFrom) || isNotADate(dateTo) || isNotClean(count)) {
         res.send('{"message":"Not a valid call!"}');
@@ -103,7 +103,7 @@ app.get('/getmealbolus', async function (req, res) {
 
 app.get('/getprofiles', async function (req, res) {
     let datefrom = req.query.datefrom ? req.query.datefrom : new Date().toISOString();
-    await delay(40);
+    await delay(50);
     res.set('Content-Type', 'application/json');
     if (isNotADate(datefrom)) {
         res.send('{"message":"Not a valid call!"}');
