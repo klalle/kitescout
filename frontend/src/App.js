@@ -69,23 +69,18 @@ function App() {
   // const [havePanned, setHavePanned] = useState();
   const hasStarted = useRef(false);
   const currBGLinePos = useRef(0);
-  const newData = useRef(false);
-  const currWidth = useRef(1000*3600*12);
+  const currWidth = useRef(1000 * 3600 * 12);
   const [currInfo, setCurrInfo] = useState();
   const [updStatus, setUpdStatus] = useState(new Date());
+  const [chkSmb, setChkSmb] = useState(false);
+  const [chkBolus, setChkBolus] = useState(true);
+  const [chkCharbs, setChkCarbs] = useState(true);
 
   var localserver = "";
   if (process.env.REACT_APP_LOCALSERVER) localserver = "http://localhost:5000";
 
   const highThresh = 10;
   const lowThresh = 3.5;
-
-  useEffect(() => {
-    if (hasStarted.current) {
-      // setData();
-      // setInfoData();
-    }
-  }, [tempBasal]);
 
   useEffect(async () => {
     hasStarted.current = true;
@@ -115,9 +110,25 @@ function App() {
       ]);
 
       let s = sgvRes.data.map(s => (({ dateString, sgv }) => ({ x: dateString, bg: sgv / 18 }))(s));
+
       let oa = openapsRes.data.map(s => (({ created_at, configuration, openaps }) => ({
         x: created_at, configuration: configuration, openaps: openaps
       }))(s));
+
+      let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({
+        x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson)
+      }))(s));
+
+
+      let m = mealbolusRes.data.map(s => (({ created_at, insulin, carbs }) => ({
+        x: created_at, insulin: insulin, carbs: carbs
+      }))(s));
+
+
+      let b = basalRes.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({
+        x: created_at, duration: durationInMilliseconds, basal: rate
+      }))(s));
+
 
       //console.log("Found: \n" + s.length + " BG\n" + oa.length + " openaps treatments");
 
@@ -152,60 +163,53 @@ function App() {
         added += s.length;
         sgv.current = s;
       }
+
       if (openaps.current) {
         openaps.current = addToAndSort(openaps.current, oa)
-        // oa = oa.concat(openaps.current); //.slice(24*60/5*5); //only grab 5 days of data
-        // //oa = oa.filter((item, pos) => oa.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        // oa = oa.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
       } else {
         added += oa.length;
         openaps.current = oa;
+      }
 
+      if (tempBasal.current) {
+        tempBasal.current = addToAndSort(tempBasal.current, b);
+        // b = b.concat(tempBasal.current);
+        // b = b.filter((item, pos) => b.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        // b = b.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
+      } else {
+        added += b.length;
+        tempBasal.current = b;
+      }
+
+      if (profile.current) {
+        profile.current = addToAndSort(profile.current, p);
+        // p = p.concat(profile.current);
+        // p = p.filter((item, pos) => p.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        // p = p.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
+      } else {
+        added += p.length;
+        profile.current = p;
+      }
+
+      if (mealBolus.current) {
+        mealBolus.current = addToAndSort(mealBolus.current, m);
+        // m = m.concat(mealBolus.current);
+        // m = m.filter((item, pos) => m.findIndex(it => it.x == item.x) == pos); //remove douplicates
+        // m = m.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
+      } else {
+        added += m.length;
+        mealBolus.current = m;
       }
 
       if (added == 0) {
         console.log("Nothing new!");
-        newData.current = true;
         // console.log("From: " + fromDate);
         // console.log("To: " + toDate);
         updateInProgress.current = false;
         return;
-      } else if (!reverse && s.length>0 && oa.length>0) {
+      } else if (!reverse && s.length > 0 && oa.length > 0) {
         lastFetch.current = toDate;//new Date(new Date(toDate).getTime() - 1000 * 60 * 10).getTime(); //get 10min back (strangely it misses openaps if not...)
       }
-      newData.current = true;
-
-      let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({
-        x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson)
-      }))(s));
-      if (profile.current) {
-        p = p.concat(profile.current);
-        p = p.filter((item, pos) => p.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        p = p.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
-      }
-      profile.current = p;
-
-      let m = mealbolusRes.data.map(s => (({ created_at, insulin, carbs }) => ({
-        x: created_at, insulin: insulin, carbs: carbs
-      }))(s));
-      if (mealBolus.current) {
-        m = m.concat(mealBolus.current);
-        m = m.filter((item, pos) => m.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        m = m.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
-      }
-      mealBolus.current = m;
-
-      let b = basalRes.data.map(s => (({ created_at, durationInMilliseconds, rate }) => ({
-        x: created_at, duration: durationInMilliseconds, basal: rate
-      }))(s));
-      if (tempBasal.current) {
-        b = b.concat(tempBasal.current);
-        b = b.filter((item, pos) => b.findIndex(it => it.x == item.x) == pos); //remove douplicates
-        b = b.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
-      }
-      tempBasal.current = b;
-
-
 
     } catch (e) {
       console.log(e);
@@ -591,10 +595,10 @@ function App() {
       return smb[val.index].bolus * 10;
     }
     function setMealBolusRadius(val) {
-      return mealInsu[val.index].insulin * 2;
+      return val.raw[2] * 2;
     }
     function setMealCarbRadius(val) {
-      return mealInsu[val.index].carbs / 5;
+      return val.raw[2] / 5;
     }
 
     setChartData({
@@ -627,7 +631,7 @@ function App() {
         },
         {
           label: "bolus",
-          data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv.current).bg - 1, x.insulin]),
+          data: mealInsu.filter(x => x.insulin != undefined).map(x => [x.x, getNearestValue(x.x, sgv.current).bg - 1, x.insulin]),
           type: 'scatter',
           showLine: false,
           yAxisID: 'y',
@@ -639,7 +643,7 @@ function App() {
         },
         {
           label: "meal-cob",
-          data: mealInsu.map(x => [x.x, getNearestValue(x.x, sgv.current).bg + 1, x.carbs]),
+          data: mealInsu.filter(x => x.carbs != undefined).map(x => [x.x, getNearestValue(x.x, sgv.current).bg + 1, x.carbs]),
           type: 'scatter',
           showLine: false,
           yAxisID: 'y',
@@ -790,21 +794,61 @@ function App() {
 
     // chart.update('none');
   }
+  function drawPointLabels(c) {// onComplete: (c) =>{
+    if (c?.chart.data.datasets.length == 0) return;
+
+    var ctx = c.chart.ctx;
+    c.chart.data.datasets.forEach(function (ds, i) {
+      if ((ds.label == "smb" && chkSmb)
+      || (ds.label == "bolus" && chkBolus)
+      || (ds.label == "meal-cob" && chkCharbs)) {
+        var meta = c.chart.getDatasetMeta(i);
+        if (!meta.hidden) {
+          meta.data.forEach(function (element, index) {
+            // Draw the text in black, with the specified font
+            ctx.fillStyle = RGB_gray;
+            var fontSize = 16;
+            var fontStyle = 'normal';
+            var fontFamily = 'Helvetica Neue';
+            //ctx.font = Chart.helpers.fontString(fontSize, fontStyle, fontFamily);
+            // Just naively convert to string for now
+            var dataString = ds.data[index][2];
+            // Make sure alignment settings are correct
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            var padding = -25;
+            var position = element.tooltipPosition();
+            if(ds.label == "meal-cob"){
+              dataString += "g";
+              position.y += -35;
+            }else if(ds.label == "smb"){
+              dataString = ds.data[index].bolus;
+            }else if(ds.label == "bolus"){
+              dataString += "U";
+            }
+            ctx.fillText(dataString, position.x, position.y - (fontSize / 2) - padding);
+          });
+        }
+      }
+    });
+
+  }
 
   const setXmin = (c) => {
     if (!ahead.current && c.chart.scales.x.min) {
       return c.chart.scales.x.min;
-    }else if(sgv.current && c.chart.scales.x.min){
-      return new Date(sgv.current[0].x).getTime() - currWidth.current/2;
+    } else if (sgv.current && c.chart.scales.x.min) {
+      return new Date(sgv.current[0].x).getTime() - currWidth.current / 2;
     }
     //return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
     return new Date().getTime() - startWidth / 2;
   }
   const setXmax = (c) => {
+
     if (!ahead.current && c.chart.scales.x.max) {
       return c.chart.scales.x.max;
-    } else if(sgv.current && c.chart.scales.x.max){
-      return new Date(sgv.current[0].x).getTime() + currWidth.current/2;
+    } else if (sgv.current && c.chart.scales.x.max) {
+      return new Date(sgv.current[0].x).getTime() + currWidth.current / 2;
     }
     return new Date().getTime() + maxOffset;
   }
@@ -898,6 +942,9 @@ function App() {
 
     },
     animation: {
+
+      //onComplete: drawPointLabels,
+      onProgress: drawPointLabels,
       // duration: 0, //disable animations...
 
       // x: {
@@ -925,6 +972,7 @@ function App() {
           // },
           generateLabels: (chart) => { //generera egna labels... 
             const { data } = chart;
+
             if (data.datasets) {
               return data.datasets.map((ds, i) => {
                 const meta = chart.getDatasetMeta(0);
@@ -1016,7 +1064,7 @@ function App() {
           mode: "x",
           speed: 20,
           onZoomComplete: (c) => {
-            currWidth.current = c.chart.scales.x.max-c.chart.scales.x.min;  
+            currWidth.current = c.chart.scales.x.max - c.chart.scales.x.min;
             setInfoData(c);
           },
         },
@@ -1200,14 +1248,41 @@ function App() {
   return (
     <div className="App">
       <div className="info">
+      <table className="settingsTable">
+          <tbody>
+            <tr>
+              <td>smb</td>
+              <td><input
+                type="checkbox"
+                checked={chkSmb}
+                onChange={e => setChkSmb(e.target.checked)}
+              /></td>
+            </tr>
+            <tr>
+            <td>Bolus</td>
+              <td><input
+                type="checkbox"
+                checked={chkBolus}
+                onChange={e => setChkBolus(e.target.checked)}
+              /></td>
+            </tr>
+            <tr>
+            <td>Carbs</td>
+              <td><input
+                type="checkbox"
+                checked={chkCharbs}
+                onChange={e => setChkCarbs(e.target.checked)}
+              /></td>
+            </tr>
+          </tbody>
+        </table>
         <table className="infoTable">
           <tbody>
             <tr>
-              <td>({(Math.abs(updStatus.getTime()-new Date(lastFetch.current))/1000/60).toFixed(1)}min) BG</td>
+              <td>({(Math.abs(updStatus.getTime() - new Date(lastFetch.current)) / 1000 / 60).toFixed(1)}min) BG</td>
               <td>{currInfo?.bg}</td>
               <td>IOB</td>
               <td>{currInfo?.iob}U</td>
-
             </tr>
             <tr>
               <td>Basal</td>
@@ -1224,7 +1299,7 @@ function App() {
           </tbody>
         </table>
         {/* <ReactTooltip type={currInfo?.reason ? currInfo.reason.split(";")[0] : ""} event="click"> */}
-        <div style={{ minHeight: "40px", maxWidth: "500px", margin: "auto" }} data-tip={currInfo ? currInfo.reason : ""} >
+        <div style={{ minHeight: "40px", maxHeight: "50px", maxWidth: "500px", margin: "auto" }} data-tip={currInfo ? currInfo.reason : ""} >
 
           {currInfo?.reason ? "(" + createTooltip(currInfo?.reason) + ") " + currInfo.reason.split(";")[1] : " "}<br />
 

@@ -23,6 +23,15 @@ html, body  {
   text-align: right;
 
 }
+.settingsTable{
+  float:left;
+  color: rgb(128,128,128);
+  /* background-color: green; */
+  margin-left: 50px;
+  margin-bottom: 10px;
+  text-align: right;
+
+}
 .infoTable td {
   padding-left: 15px;
 }
