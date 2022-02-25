@@ -98,9 +98,7 @@ function App() {
     let start = new Date();
     updateInProgress.current = true;
     try {
-      if (!reverse) {
-        lastFetch.current = new Date(new Date(toDate).getTime() - 1000 * 3600).getTime(); //get one hour back (strangely it misses openaps if not...)
-      }
+      
       fromDate = new Date(fromDate).toISOString();
       toDate = toDate.toISOString();
 
@@ -122,21 +120,28 @@ function App() {
       var added = 0;
 
       function addToAndSort(source, add) {
+        if(add.length==0) return source;
         if (!reverse) {
           let last = source[0];
           if (last.x != add[0].x) {
             var firstNewIndex = add.findIndex((it) => it.x == last.x);
-            source = add.slice(0,firstNewIndex).concat(source);
+            if (firstNewIndex == -1) {
+              source = add.concat(source);
+              firstNewIndex = add.length;
+            } else {
+              source = add.slice(0, firstNewIndex).concat(source);
+            }
             console.log("added: " + firstNewIndex);
             added += firstNewIndex;
           }
-        }else{
+        } else {
           source = source.concat(add);
 
           added += add.length;
         }
         return source;
       }
+
       if (sgv.current) {
         sgv.current = addToAndSort(sgv.current, s)
       } else {
@@ -149,7 +154,7 @@ function App() {
         // //oa = oa.filter((item, pos) => oa.findIndex(it => it.x == item.x) == pos); //remove douplicates
         // oa = oa.sort((a, b) => new Date(a.x) < new Date(b.x) ? 1 : -1);
       } else {
-        added += s.length;
+        added += oa.length;
         openaps.current = oa;
 
       }
@@ -161,7 +166,9 @@ function App() {
         updateInProgress.current = false;
         return;
       }
-
+      if (!reverse) {
+        lastFetch.current = toDate; //new Date(new Date(toDate).getTime() - 1000 * 3600).getTime(); //get one hour back (strangely it misses openaps if not...)
+      }
 
       let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({
         x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson)
