@@ -70,6 +70,7 @@ function App() {
   const hasStarted = useRef(false);
   const currBGLinePos = useRef(0);
   const [currInfo, setCurrInfo] = useState();
+  const [updStatus, setUpdStatus] = useState(new Date());
 
   var localserver = "";
   if (process.env.REACT_APP_LOCALSERVER) localserver = "http://localhost:5000";
@@ -90,6 +91,7 @@ function App() {
     const interval = setInterval(async () => {
       console.log('Fetching new data...');
       await getData(lastFetch.current); //only fetch newest data
+      setUpdStatus(new Date());
     }, 1000 * 30);
     return () => clearInterval(interval);
   }, []);
@@ -1191,7 +1193,7 @@ function App() {
         <table className="infoTable">
           <tbody>
             <tr>
-              <td>BG</td>
+              <td>({((updStatus.getTime()-new Date(lastFetch.current))/1000/60).toFixed(1)}min) BG</td>
               <td>{currInfo?.bg}</td>
               <td>IOB</td>
               <td>{currInfo?.iob}U</td>
