@@ -1193,7 +1193,7 @@ function App() {
         <table className="infoTable">
           <tbody>
             <tr>
-              <td>({((updStatus.getTime()-new Date(lastFetch.current))/1000/60).toFixed(1)}min) BG</td>
+              <td>({(Math.abs(updStatus.getTime()-new Date(lastFetch.current))/1000/60).toFixed(1)}min) BG</td>
               <td>{currInfo?.bg}</td>
               <td>IOB</td>
               <td>{currInfo?.iob}U</td>
