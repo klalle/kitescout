@@ -1281,14 +1281,14 @@ function App() {
         {/* </ReactTooltip> */}
         <ReactTooltip multiline={true} className="tooltip" />
       </div>
-      <div style={{ height: "80vh" }}>
+      <div style={{ height: "75vh" }}>
         <Line className="MainChart"
           options={chartOptions}
           data={chartData}
           style={{
             backgroundColor: "black",
             // height: "50vh",
-            marginTop: "50px",
+            // marginTop: "50px",
           }}
         />
         <div className="chkboxes">
