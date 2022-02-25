@@ -69,6 +69,8 @@ function App() {
   // const [havePanned, setHavePanned] = useState();
   const hasStarted = useRef(false);
   const currBGLinePos = useRef(0);
+  const newData = useRef(false);
+  const currWidth = useRef(1000*3600*12);
   const [currInfo, setCurrInfo] = useState();
   const [updStatus, setUpdStatus] = useState(new Date());
 
@@ -163,6 +165,7 @@ function App() {
 
       if (added == 0) {
         console.log("Nothing new!");
+        newData.current = true;
         // console.log("From: " + fromDate);
         // console.log("To: " + toDate);
         updateInProgress.current = false;
@@ -170,6 +173,7 @@ function App() {
       } else if (!reverse && s.length>0 && oa.length>0) {
         lastFetch.current = toDate;//new Date(new Date(toDate).getTime() - 1000 * 60 * 10).getTime(); //get 10min back (strangely it misses openaps if not...)
       }
+      newData.current = true;
 
       let p = profileRes.data.map(s => (({ created_at, duration, profile, profileJson }) => ({
         x: created_at, duration: duration, profileName: profile, profileJson: JSON.parse(profileJson)
@@ -790,6 +794,8 @@ function App() {
   const setXmin = (c) => {
     if (!ahead.current && c.chart.scales.x.min) {
       return c.chart.scales.x.min;
+    }else if(sgv.current && c.chart.scales.x.min){
+      return new Date(sgv.current[0].x).getTime() - currWidth.current/2;
     }
     //return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
     return new Date().getTime() - startWidth / 2;
@@ -797,10 +803,11 @@ function App() {
   const setXmax = (c) => {
     if (!ahead.current && c.chart.scales.x.max) {
       return c.chart.scales.x.max;
+    } else if(sgv.current && c.chart.scales.x.max){
+      return new Date(sgv.current[0].x).getTime() + currWidth.current/2;
     }
     return new Date().getTime() + maxOffset;
   }
-
 
   const startwidthHours = 12;
   const startWidth = 1000 * 3600 * startwidthHours;
@@ -1008,7 +1015,10 @@ function App() {
           },
           mode: "x",
           speed: 20,
-          onZoomComplete: setInfoData
+          onZoomComplete: (c) => {
+            currWidth.current = c.chart.scales.x.max-c.chart.scales.x.min;  
+            setInfoData(c);
+          },
         },
         pan: {
           enabled: true,
