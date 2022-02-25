@@ -23,13 +23,12 @@ html, body  {
   text-align: right;
 
 }
-.settingsTable{
-  float:left;
+.chkboxes{
   color: rgb(128,128,128);
   /* background-color: green; */
-  margin-left: 50px;
+  margin: auto;
   margin-bottom: 10px;
-  text-align: right;
+  text-align: center;
 
 }
 .infoTable td {

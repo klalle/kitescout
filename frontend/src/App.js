@@ -1248,34 +1248,7 @@ function App() {
   return (
     <div className="App">
       <div className="info">
-      <table className="settingsTable">
-          <tbody>
-            <tr>
-              <td>smb</td>
-              <td><input
-                type="checkbox"
-                checked={chkSmb}
-                onChange={e => setChkSmb(e.target.checked)}
-              /></td>
-            </tr>
-            <tr>
-            <td>Bolus</td>
-              <td><input
-                type="checkbox"
-                checked={chkBolus}
-                onChange={e => setChkBolus(e.target.checked)}
-              /></td>
-            </tr>
-            <tr>
-            <td>Carbs</td>
-              <td><input
-                type="checkbox"
-                checked={chkCharbs}
-                onChange={e => setChkCarbs(e.target.checked)}
-              /></td>
-            </tr>
-          </tbody>
-        </table>
+     
         <table className="infoTable">
           <tbody>
             <tr>
@@ -1319,6 +1292,22 @@ function App() {
             marginBottom: "50px"
           }}
         />
+        <div className="chkboxes">
+         Show labels: smb
+        <input
+          type="checkbox"
+          checked={chkSmb}
+          onChange={e => setChkSmb(e.target.checked)}
+        /> bolus<input
+          type="checkbox"
+          checked={chkBolus}
+          onChange={e => setChkBolus(e.target.checked)}
+        /> carbs<input
+          type="checkbox"
+          checked={chkCharbs}
+          onChange={e => setChkCarbs(e.target.checked)}
+        />
+        </div>
         {/* <Line className="MainChart"
         options={chartOptions}
         data={chartData}
