@@ -1289,7 +1289,6 @@ function App() {
             backgroundColor: "black",
             // height: "50vh",
             marginTop: "50px",
-            marginBottom: "50px"
           }}
         />
         <div className="chkboxes">
