@@ -508,13 +508,11 @@ function App() {
           0
         ]);
 
-
-
         tempBasLoop.push([
           t,
           null
         ]);
-
+        lastStart = t;
       }
     });
 
