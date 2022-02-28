@@ -57,6 +57,7 @@ function App() {
   // ChartJS.register(variableLineColor);
 
   const [chartData, setChartData] = useState({ datasets: [] });
+  const chartRef = useRef();
   //const [chartOptions, setChartOptions] = useState({});
   const sgv = useRef();
   const openaps = useRef();
@@ -395,7 +396,7 @@ function App() {
         currTime.setDate(currTime.getDate() - 1);
       }
     });
-
+    var lastStart = 1000 * 3600;
     let tempBasProf = [];
 
     lastProfileStartTime = new Date(); //set to midnight today
@@ -479,9 +480,13 @@ function App() {
 
 
     let tempBasLoop = [];
+    var lastStart = new Date().getTime() + 1000 * 3600;
     tempBasal?.current.forEach((e, index) => {
       let t = new Date(e.x).getTime();
       if (t > firstBGtime) {
+        if (t + e.duration > lastStart) {
+          e.duration = lastStart - t;
+        }
         tempBasLoop.push([
           t + e.duration,
           null
@@ -509,7 +514,6 @@ function App() {
           t,
           null
         ]);
-
 
       }
     });
@@ -800,8 +804,8 @@ function App() {
     var ctx = c.chart.ctx;
     c.chart.data.datasets.forEach(function (ds, i) {
       if ((ds.label == "smb" && chkSmb)
-      || (ds.label == "bolus" && chkBolus)
-      || (ds.label == "meal-cob" && chkCharbs)) {
+        || (ds.label == "bolus" && chkBolus)
+        || (ds.label == "meal-cob" && chkCharbs)) {
         var meta = c.chart.getDatasetMeta(i);
         if (!meta.hidden) {
           meta.data.forEach(function (element, index) {
@@ -818,12 +822,12 @@ function App() {
             ctx.textBaseline = 'middle';
             var padding = -25;
             var position = element.tooltipPosition();
-            if(ds.label == "meal-cob"){
+            if (ds.label == "meal-cob") {
               dataString += "g";
               position.y += -35;
-            }else if(ds.label == "smb"){
+            } else if (ds.label == "smb") {
               dataString = ds.data[index].bolus;
-            }else if(ds.label == "bolus"){
+            } else if (ds.label == "bolus") {
               dataString += "U";
             }
             ctx.fillText(dataString, position.x, position.y - (fontSize / 2) - padding);
@@ -966,10 +970,7 @@ function App() {
             if (e.text.includes("cob") && e.text != "cob") return null;
             return e;
           },
-          // color: (e, l) => {
-          //  // font color of labels
-          //   return RGB_green;
-          // },
+          
           generateLabels: (chart) => { //generera egna labels... 
             const { data } = chart;
 
@@ -1008,7 +1009,7 @@ function App() {
           event.native.target.style.cursor = 'auto';
         },
 
-        onClick: function (e, legendItem, a) {
+        onClick: function (e, legendItem, a, b) {
 
           function setHidden(name, ci) {
             ci.data.datasets.forEach(function (e, i) {
@@ -1035,18 +1036,32 @@ function App() {
           else if (isHidden) {
             meta.hidden = null;
             ci.data.datasets[index].hidden = null;
+
           }
           else {
             meta.hidden = true;
+            //ci.data.datasets[index].backgroundColor = RGB_reda;
+            
+            // let i = a.legendItems.findIndex(x => x.text == name);
+            // let hitbox = a.legendHitBoxes[i];
+            // // Strikethrough the text if hidden
+            // ci.ctx.fillStyle = "red";
+            // ci.ctx.beginPath();
+            // ci.ctx.lineWidth = 2;
+            // ci.ctx.moveTo(hitbox.left, hitbox.top);
+            // ci.ctx.lineTo(hitbox.left + hitbox.width, hitbox.top + 10);
+            // ci.ctx.stroke();
+            // ci.ctx.fillText("kalle", hitbox.left, hitbox.top + 10);
           }
-
-
+          //chartRef.current.chartInstance.defaults.plugins.legend.onClick.call(this, e, legendItem, this);
           ci.update();
         },
       },
       zoom: {
         limits: {
-          x: { min: 0, max: new Date().getTime() + 1000 * 3600 * 24, minRange: 50 },
+          x: {
+            min: 0, max: new Date().getTime() + 1000 * 3600 * 24, minRange: 50
+          },
           //y: {min: -200, max: 200, minRange: 50}
         },
         zoom: {
@@ -1248,7 +1263,7 @@ function App() {
   return (
     <div className="App">
       <div className="info">
-     
+
         <table className="infoTable">
           <tbody>
             <tr>
@@ -1283,6 +1298,7 @@ function App() {
       </div>
       <div style={{ height: "75vh" }}>
         <Line className="MainChart"
+          ref={chartRef}
           options={chartOptions}
           data={chartData}
           style={{
@@ -1292,20 +1308,20 @@ function App() {
           }}
         />
         <div className="chkboxes">
-         Show labels: smb
-        <input
-          type="checkbox"
-          checked={chkSmb}
-          onChange={e => setChkSmb(e.target.checked)}
-        /> bolus<input
-          type="checkbox"
-          checked={chkBolus}
-          onChange={e => setChkBolus(e.target.checked)}
-        /> carbs<input
-          type="checkbox"
-          checked={chkCharbs}
-          onChange={e => setChkCarbs(e.target.checked)}
-        />
+          Show labels: smb
+          <input
+            type="checkbox"
+            checked={chkSmb}
+            onChange={e => setChkSmb(e.target.checked)}
+          /> bolus<input
+            type="checkbox"
+            checked={chkBolus}
+            onChange={e => setChkBolus(e.target.checked)}
+          /> carbs<input
+            type="checkbox"
+            checked={chkCharbs}
+            onChange={e => setChkCarbs(e.target.checked)}
+          />
         </div>
         {/* <Line className="MainChart"
         options={chartOptions}
