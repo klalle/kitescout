@@ -480,7 +480,7 @@ function App() {
 
 
     let tempBasLoop = [];
-    var lastStart = new Date().getTime() + 1000 * 3600;
+    var lastStart = new Date().getTime() + 1000 * 3600*5;
     tempBasal?.current.forEach((e, index) => {
       let t = new Date(e.x).getTime();
       if (t > firstBGtime) {
