@@ -840,7 +840,7 @@ function App() {
     if (!ahead.current && c.chart.scales.x.min) {
       return c.chart.scales.x.min;
     } else if (sgv.current && c.chart.scales.x.min) {
-      return new Date(sgv.current[0].x).getTime() - currWidth.current / 2;
+      return Math.max(new Date(sgv.current[0].x),new Date(openaps.current[0].x)) - currWidth.current / 2;
     }
     //return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
     return new Date().getTime() - startWidth / 2;
@@ -850,7 +850,7 @@ function App() {
     if (!ahead.current && c.chart.scales.x.max) {
       return c.chart.scales.x.max;
     } else if (sgv.current && c.chart.scales.x.max) {
-      return new Date(sgv.current[0].x).getTime() + currWidth.current / 2;
+      return Math.max(new Date(sgv.current[0].x),new Date(openaps.current[0].x)) + currWidth.current / 2;
     }
     return new Date().getTime() + maxOffset;
   }
