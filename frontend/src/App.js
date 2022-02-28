@@ -730,7 +730,7 @@ function App() {
           fill: false,
           pointRadius: 0,
           lineBorderWidth: 0.5,
-          hidden: true,
+          //hidden: true,
         },
         {
           label: "sens",
@@ -743,7 +743,7 @@ function App() {
           fill: true,
           pointRadius: 0,
           lineBorderWidth: 0.5,
-          hidden: true,
+          //hidden: true,
         },
       ]
     });
