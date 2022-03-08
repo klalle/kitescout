@@ -77,8 +77,10 @@ function App() {
   const [chkBolus, setChkBolus] = useState(true);
   const [chkCharbs, setChkCarbs] = useState(true);
 
-  var localserver = "";
-  if (process.env.REACT_APP_LOCALSERVER) localserver = "http://localhost:5000";
+ // var localserver = "/kitescout";
+ // if (process.env.REACT_APP_LOCALSERVER) localserver = "http://localhost:1338";
+  const urlPath = window.location.pathname.split("/").filter(e =>  e);
+  const localserver = urlPath.length == 0 ? "http://localhost:1338" : "/" + urlPath[0];
 
   const highThresh = 10;
   const lowThresh = 3.5;
@@ -226,8 +228,8 @@ function App() {
   const RGB_orangea = 'rgba(255,127,0,0.15)';
   const RGB_blue = 'rgb(0, 100, 255)';
   const RGB_bluea = 'rgba(0, 100, 255, 0.15)';
-  const RGB_green = 'rgb(0,255,0)';
-  const RGB_greena = 'rgba(0,255,0,0.15)';
+  const RGB_green = 'rgb(75,255,0)';
+  const RGB_greena = 'rgba(75,255,0.15)';
   const RGB_gray = 'rgb(128,128,128)';
   const RGB_graya = 'rgba(128,128,128,0.15)';
   let bg = [];
@@ -248,7 +250,7 @@ function App() {
     reason = [];
     let start = new Date();
     if (!sgv.current || sgv.current.length == 0) {
-      alert("No data to show... try scrolling back in time or check your CONNSTR_mongo in Heroku!")
+      alert("No data to show... try scrolling back in time or check your MONGODB_URI in Heroku!")
       return;
     };
     sgv.current.forEach((e, index) => {
@@ -480,7 +482,7 @@ function App() {
 
 
     let tempBasLoop = [];
-    var lastStart = new Date().getTime() + 1000 * 3600*5;
+    var lastStart = new Date().getTime() + 1000 * 3600 * 5;
     tempBasal?.current.forEach((e, index) => {
       let t = new Date(e.x).getTime();
       if (t > firstBGtime) {
@@ -616,8 +618,8 @@ function App() {
           borderWidth: 0.5, //line width
           // borderColor: 'rgb(0, 200, 0)',
           //backgroundColor: 'rgba(0, 200, 0, 1)',
-          borderColor: (context) => context.chart.chartArea ? getGradient(context.chart, 0.5) : null,
-          backgroundColor: (context) => context.chart.chartArea ? getGradient(context.chart, .5) : null,
+          borderColor: (context) => context.chart.chartArea ? getGradient(context.chart, 1) : null,
+          backgroundColor: (context) => context.chart.chartArea ? getGradient(context.chart, .8) : null,
           fill: false
         },
         {
@@ -840,7 +842,7 @@ function App() {
     if (!ahead.current && c.chart.scales.x.min) {
       return c.chart.scales.x.min;
     } else if (sgv.current && c.chart.scales.x.min) {
-      return Math.max(new Date(sgv.current[0].x),new Date(openaps.current[0].x)) - currWidth.current / 2;
+      return Math.max(new Date(sgv.current[0].x), new Date(openaps.current[0].x)) - currWidth.current / 2;
     }
     //return new Date(Math.round((new Date().getTime() - 1000 * 3600 * 12) / stepSize) * stepSize);
     return new Date().getTime() - startWidth / 2;
@@ -850,7 +852,7 @@ function App() {
     if (!ahead.current && c.chart.scales.x.max) {
       return c.chart.scales.x.max;
     } else if (sgv.current && c.chart.scales.x.max) {
-      return Math.max(new Date(sgv.current[0].x),new Date(openaps.current[0].x)) + currWidth.current / 2;
+      return Math.max(new Date(sgv.current[0].x), new Date(openaps.current[0].x)) + currWidth.current / 2;
     }
     return new Date().getTime() + maxOffset;
   }
@@ -968,7 +970,7 @@ function App() {
             if (e.text.includes("cob") && e.text != "cob") return null;
             return e;
           },
-          
+
           generateLabels: (chart) => { //generera egna labels... 
             const { data } = chart;
 
@@ -1039,7 +1041,7 @@ function App() {
           else {
             meta.hidden = true;
             //ci.data.datasets[index].backgroundColor = RGB_reda;
-            
+
             // let i = a.legendItems.findIndex(x => x.text == name);
             // let hitbox = a.legendHitBoxes[i];
             // // Strikethrough the text if hidden
@@ -1212,13 +1214,15 @@ function App() {
       } else {
         ahead.current = false;
       }
+      let dbg = Number(currSug.tick) > 0 ? "+" + (Number(currSug.tick) / 18).toFixed(1) : (Number(currSug.tick) / 18).toFixed(1);
       setCurrInfo({
         bg: bs.bg.toFixed(1),
+        dBg: dbg,
         iob: currOpenAps.iob.iob.toFixed(1),
-        act: currOpenAps.iob.activity.toFixed(3),
+        act: (currOpenAps.iob.activity * 100).toFixed(1),
         cob: currSug?.COB ? currSug.COB.toFixed(1) : "",
         sens: currSug?.sensitivityRatio ? (currSug.sensitivityRatio * 100).toFixed(0) : "",
-        basal: getNearestValue(currBGLinePos.current, tempBasal.current).basal,
+        basal: getNearestValue(currBGLinePos.current, tempBasal.current).basal.toFixed(2),
         reason: currSug?.reason
       })
       //lastBGLinePos = currBGLinePos.current;
@@ -1260,41 +1264,46 @@ function App() {
   }
   return (
     <div className="App">
-      <div className="info">
+      <div className="info" style={{ maxHeight: "30vh" }}>
 
-        <table className="infoTable">
+        <table className="infoTable" >
           <tbody>
             <tr>
-              <td>({(Math.abs(updStatus.getTime() - new Date(lastFetch.current)) / 1000 / 60).toFixed(1)}min) BG</td>
-              <td>{currInfo?.bg}</td>
-              <td>IOB</td>
+              <td rowspan="3" >
+                <span style={currInfo?.bg > 3.5 && currInfo?.bg < 10 ? { color: RGB_green, fontSize: "10vmin" } : { color: RGB_red, fontSize: "10vmin" }}>
+                  {currInfo?.bg}
+                </span>
+              </td>
+              <td rowspan="2" style={{ textAlign: "left", verticalAlign: "bottom" }}>
+                <span style={currInfo?.dBg.includes("-") ? { color: RGB_red } : { color: RGB_green }}>({currInfo?.dBg})</span>
+              </td>
+              <td>IOB:</td>
               <td>{currInfo?.iob}U</td>
-            </tr>
-            <tr>
-              <td>Basal</td>
-              <td>{currInfo?.basal}U</td>
-              <td>COB</td>
-              <td>{currInfo?.cob}g</td>
-            </tr>
-            <tr>
-              <td>Activity</td>
+              <td>Activity:</td>
               <td>{currInfo?.act}</td>
-              <td>Autosens</td>
+            </tr>
+            <tr>
+              <td>COB:</td>
+              <td>{currInfo?.cob}g</td>
+              <td>Autosens:</td>
               <td>{currInfo?.sens}%</td>
+            </tr>
+            <tr>
+              <td>[{(Math.abs(updStatus.getTime() - new Date(lastFetch.current)) / 1000 / 60).toFixed(1)}min]</td>
+              <td>Basal:</td>
+              <td>{currInfo?.basal}U</td>
             </tr>
           </tbody>
         </table>
-        {/* <ReactTooltip type={currInfo?.reason ? currInfo.reason.split(";")[0] : ""} event="click"> */}
-        <div style={{ minHeight: "40px", maxHeight: "50px", maxWidth: "500px", margin: "auto" }} data-tip={currInfo ? currInfo.reason : ""} >
+        <div style={{ border: '1px solid gray', display: "inline-block", padding: "1vh" }} data-tip={currInfo ? currInfo.reason : ""} >
 
-          {currInfo?.reason ? "(" + createTooltip(currInfo?.reason) + ") " + currInfo.reason.split(";")[1] : " "}<br />
+          {currInfo?.reason ? "(" + createTooltip(currInfo.reason) + ") " + currInfo.reason.split(";")[1] : " "}<br />
 
           {currInfo?.reason ? currInfo.reason.split(";")[2] : " "}
         </div>
-        {/* </ReactTooltip> */}
         <ReactTooltip multiline={true} className="tooltip" />
       </div>
-      <div style={{ height: "75vh" }}>
+      <div style={{ height: "65vh" }}>
         <Line className="MainChart"
           ref={chartRef}
           options={chartOptions}
@@ -1305,32 +1314,23 @@ function App() {
             // marginTop: "50px",
           }}
         />
-        <div className="chkboxes">
-          Show labels: smb
-          <input
-            type="checkbox"
-            checked={chkSmb}
-            onChange={e => setChkSmb(e.target.checked)}
-          /> bolus<input
-            type="checkbox"
-            checked={chkBolus}
-            onChange={e => setChkBolus(e.target.checked)}
-          /> carbs<input
-            type="checkbox"
-            checked={chkCharbs}
-            onChange={e => setChkCarbs(e.target.checked)}
-          />
-        </div>
-        {/* <Line className="MainChart"
-        options={chartOptions}
-        data={chartData}
-        style={{
-          backgroundColor: "black",
-          // height: "50vh",
-          marginTop: "100px",
-          marginBottom: "50px"
-        }}
-      /> */}
+      </div>
+
+      <div style={{ height: "5vh" }} className="chkboxes">
+        Show labels: smb
+        <input
+          type="checkbox"
+          checked={chkSmb}
+          onChange={e => setChkSmb(e.target.checked)}
+        /> bolus<input
+          type="checkbox"
+          checked={chkBolus}
+          onChange={e => setChkBolus(e.target.checked)}
+        /> carbs<input
+          type="checkbox"
+          checked={chkCharbs}
+          onChange={e => setChkCarbs(e.target.checked)}
+        />
       </div>
     </div>
   );
